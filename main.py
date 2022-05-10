@@ -1,8 +1,10 @@
+# _*_ coding: UTF-8 _*_
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
 import unittest
 import time
 from datetime import datetime
@@ -378,183 +380,277 @@ class AutomationTest(unittest.TestCase):
                 display_product = False
 
             if display_product:
-                # Clear
-                try:
-                    WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                        (By.XPATH, "//p[text()='Clear']"))).click()
-                    # 確認已切換至產品
-                    WebDriverWait(self.br, 10, 1).until(EC.presence_of_element_located(
-                        (By.XPATH, "//div[./p[text()='Clear'] and contains(@class, 'active')]")))
-                    product_option = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_all_elements_located(
-                        (By.XPATH, "//div[@class='product-form__content__options']//p[@class='title']")))
-                    option_list = [option.text for option in product_option[1:]]
-                    select_item = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_all_elements_located(
-                        (By.XPATH, "//div[@class='selected-item']")))
-                    item_list = [select_item[i].text for i in range(len(select_item)) if i != 1]
-                    if ('手機殼顏色' or '掛繩組(加購)') not in option_list or \
-                            list(filter(lambda x: '透明' not in x, item_list)):
-                        print("Fail: Clear 產品資訊顯示有誤")
-                        print(option_list)
-                        print(item_list)
+                product_dict = {
+                    "Clear": [
+                        "//div[@class='product-form__content__options']//p[@class='title']",
+                        "1",
+                        "手機殼顏色",
+                        "掛繩組(加購)",
+                        "透明",
+                    ],
+                    "Mod NX": [
+                        "//div[@class='product-form__content__options']//p[@class='title' or @class='bundle__docs']",
+                        "2",
+                        "Mod NX 整組（手機殼+背板）",
+                        "手機殼顏色",
+                        "黑",
+                    ],
+                    "SolidSuit": [
+                        "//div[@class='product-form__content__options']//p[@class='title']",
+                        "1",
+                        "手機殼顏色",
+                        "黑",
+                    ],
+                }
+                for product in product_dict:
+                    try:
+                        WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
+                            (By.XPATH, f"//p[text()='{product}']"))).click()
+                        self.check_display_report()
+                        # 確認已切換至產品
+                        WebDriverWait(self.br, 10, 1).until(EC.presence_of_element_located(
+                            (By.XPATH, f"//div[./p[text()='{product}'] and contains(@class, 'active')]")))
+                        product_option = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_all_elements_located(
+                            (By.XPATH, f"{product_dict[product][0]}")))
+                        option_list = [option.text for option in product_option[1:]]
+                        select_item = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_all_elements_located(
+                            (By.XPATH, "//div[@class='selected-item']")))
+                        item_list = [select_item[i].text for i in range(len(select_item)) if i != int(f"{product_dict[product][1]}")]
+
+                        if product == 'SolidSuit':
+                            if product_dict[product][2] not in option_list or \
+                                    list(filter(lambda x: product_dict[product][3] not in x, item_list)):
+                                print(f"Fail: {product} 產品資訊顯示有誤")
+                                print(option_list)
+                                print(item_list)
+                                result_list.append("False")
+                        else:
+                            if (product_dict[product][2] or product_dict[product][3]) not in option_list or \
+                                    list(filter(lambda x: product_dict[product][4] not in x, item_list)):
+                                print(f"Fail: {product} 產品資訊顯示有誤")
+                                print(option_list)
+                                print(item_list)
+                                result_list.append("False")
+
+                        # 手機殼顏色
+                        try:
+                            plus = WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
+                                (By.XPATH, "//span[text()='手機殼顏色']/../..//div[contains(@class, 'plus')]")))
+                            plus.click()
+                            time.sleep(1)
+                            # 判斷是否有展開
+                            if 'minus' not in plus.get_attribute('class'):
+                                plus.click()
+
+                            color_list = WebDriverWait(self.br, 10, 1).until(EC.presence_of_all_elements_located(
+                                (By.XPATH, "//div[@id='color-picker']/ul[@class='color-picker hr']/li")))
+                            for i in range(len(color_list)):
+                                color_list[i].click()
+                                # 確認已切換至產品
+                                WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
+                                    (By.XPATH, "//button[@class='add-to-cart-btn' and not(contains(@disabled, 'disabled'))]")))
+                                select_item = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_all_elements_located(
+                                    (By.XPATH, "//div[@class='selected-item']")))
+                                item_list = [select_item[i].text for i in range(len(select_item)) if i != 1]
+
+                                if i == 0:
+                                    old_items = item_list
+                                else:
+                                    # 比對完再取代
+                                    if old_items == item_list:
+                                        print(f"Fail: {product} 點擊 手機殼顏色無反應")
+                                        print(f"之前: {old_items}")
+                                        print(f"當前: {item_list}")
+                                        result_list.append("False")
+                                    else:
+                                        old_items = item_list
+                        except:
+                            print(f"Fail: 確認 {product}產品 -> 手機殼顏色 時異常")
+                            result_list.append("False")
+                    except:
+                        print(f"Fail: 確認 {product}產品 時異常")
                         result_list.append("False")
 
-                    # 手機殼顏色
-                    try:
-                        plus = WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                            (By.XPATH, "//span[text()='手機殼顏色']/../..//div[contains(@class, 'plus')]")))
-                        plus.click()
-                        time.sleep(1)
-                        # 判斷是否有展開
-                        if 'minus' not in plus.get_attribute('class'):
-                            plus.click()
-                        color_list = WebDriverWait(self.br, 10, 1).until(EC.presence_of_all_elements_located(
-                            (By.XPATH, "//div[@id='color-picker']/ul[@class='color-picker hr']/li")))
-                        for i in range(len(color_list)):
-                            color_list[i].click()
-                            # 確認已切換至產品
-                            WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                                (By.XPATH, "//button[@class='add-to-cart-btn' and not(contains(@disabled, 'disabled'))]")))
-                            select_item = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_all_elements_located(
-                                (By.XPATH, "//div[@class='selected-item']")))
-                            item_list = [select_item[i].text for i in range(len(select_item)) if i != 1]
+        results = False if "False" in result_list else True
+        self.assertEqual(True, results)
 
-                            if i == 0:
-                                old_items = item_list
-                            else:
-                                # 比對完再取代
-                                if old_items == item_list:
-                                    print("Fail: 點擊 手機殼顏色無反應")
-                                    print(f"之前: {old_items}")
-                                    print(f"當前: {item_list}")
-                                    result_list.append("False")
-                                else:
-                                    old_items = item_list
-                    except:
-                        print("Fail: 確認 Clear產品 -> 手機殼顏色 時異常")
+    def test_shopping_car(self):
+        """ 測試購物車 """
+
+        # init
+        result_list = []
+        add_car = True
+        title = None
+        sub_title = None
+        price = None
+        color = None
+
+        # 加入購物車
+        try:
+            # 取商品資訊
+            title_ele = WebDriverWait(self.br, 20, 1).until(EC.visibility_of_element_located(
+                (By.XPATH, "//div[@id='caseProduct']//h2[@class='product-form__content__title']")))
+            title = title_ele.text
+            sub_title_ele = WebDriverWait(self.br, 20, 1).until(EC.visibility_of_element_located(
+                (By.XPATH, "//div[@id='caseProduct']//p[@class='product-form__content__subtitle']")))
+            sub_title = sub_title_ele.text
+            price_ele = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
+                (By.XPATH, "//div[@id='caseProduct']//span[@class='total-price']")))
+            price = price_ele.text
+            item = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
+                (By.XPATH, "//div[@class='selected-item']//p")))
+            color = item.text[item.text.find('(')+1:item.text.find('/')-1]
+            WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
+                (By.XPATH, "//button[@class='add-to-cart-btn']"))).click()
+            # 關閉加購商品
+            WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
+                (By.XPATH, "//div[@id='add__on']//button[@class='add__on__btn add__on__btn--skip']"))).click()
+            time.sleep(1)
+            # 驗證數量
+            car_num = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
+                (By.XPATH, "//div[@class='functional-list']//p[@class='cart-quantity']")))
+            if "1" not in car_num.text:
+                print(f"Fail: 購物車數量顯示異常: {car_num.text}")
+                result_list.append("False")
+            # 移至購物車圖示判斷顯示商品
+            ActionChains(self.br).move_to_element(car_num).perform()
+            car_product = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
+                (By.XPATH, "//div[@id='functional-preview']//div[@class='item-title']")))
+            if (title or sub_title or price or "x 1") not in car_product.text:
+                print("Fail: 購物車商品有誤")
+                print(f"購物車商品內容: {car_product.text}")
+                print(f"商品大標題:{title}")
+                print(f"商品副標題:{sub_title}")
+                print(f"商品價錢:{price}")
+                result_list.append("False")
+        except:
+            print("Fail: 加入購物車 時異常")
+            result_list.append("False")
+            add_car = False
+
+        # 有正常加入購物車在進行判斷
+        if add_car:
+            # 進入購物車頁面
+            try:
+                WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
+                    (By.XPATH, "//div[@class='functional-list']//p[@class='cart-quantity']"))).click()
+                WebDriverWait(self.br, 10, 1).until_not(EC.visibility_of_element_located(
+                    (By.XPATH, "//div[@id='caseProduct']//h2[@class='product-form__content__title']")))
+                WebDriverWait(self.br, 10, 1).until(EC.presence_of_element_located(
+                    (By.XPATH, "//main[@id='MainContent']")))
+                # wait loading
+                WebDriverWait(self.br, 10, 1).until_not(EC.presence_of_element_located(
+                    (By.XPATH, "//div[@class='loading__mask loading__mask__show']")))
+                # 判斷購物車是否有商品
+                try:
+                    ele = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
+                        (By.XPATH, "//div[@id='cart']//div[@class='expanded-message']")))
+                    if "購物車是空的喔！" in ele.text:
+                        print(f"Fail: {ele.text}")
+                        result_list.append("False")
+                    else:
+                        print(f"Fail: 購物車顯示訊息異常: {ele.text}")
                         result_list.append("False")
                 except:
-                    print("Fail: 確認 Clear產品 時異常")
-                    result_list.append("False")
-
-                # Mod NX
-                try:
-                    WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                        (By.XPATH, "//p[text()='Mod NX']"))).click()
-                    # 確認已切換至產品
-                    WebDriverWait(self.br, 10, 1).until(EC.presence_of_element_located(
-                        (By.XPATH, "//div[./p[text()='Mod NX'] and contains(@class, 'active')]")))
-                    product_option = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_all_elements_located(
-                        (By.XPATH, "//div[@class='product-form__content__options']"
-                                   "//p[@class='title' or @class='bundle__docs']")))
-                    option_list = [option.text for option in product_option[1:]]
-                    select_item = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_all_elements_located(
-                        (By.XPATH, "//div[@class='selected-item']")))
-                    item_list = [select_item[i].text for i in range(len(select_item)) if i != 2]
-                    if ('Mod NX 整組（手機殼+背板）' or '手機殼顏色') not in option_list or \
-                            list(filter(lambda x: '黑' not in x, item_list)):
-                        print("Fail: Mod NX 產品資訊顯示有誤")
-                        print(option_list)
-                        print(item_list)
-                        result_list.append("False")
-
-                    # 手機殼顏色
                     try:
-                        plus = WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                            (By.XPATH, "//span[text()='手機殼顏色']/../..//div[contains(@class, 'plus')]")))
-                        plus.click()
-                        time.sleep(1)
-                        # 判斷是否有展開
-                        if 'minus' not in plus.get_attribute('class'):
-                            plus.click()
-                        color_list = WebDriverWait(self.br, 10, 1).until(EC.presence_of_all_elements_located(
-                            (By.XPATH, "//div[@id='color-picker']/ul[@class='color-picker hr']/li")))
-                        for i in range(len(color_list)):
-                            color_list[i].click()
-                            # 確認已切換至產品
-                            WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                                (By.XPATH, "//button[@class='add-to-cart-btn' and not(contains(@disabled, 'disabled'))]")))
-                            select_item = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_all_elements_located(
-                                (By.XPATH, "//div[@class='selected-item']")))
-                            item_list = [select_item[i].text for i in range(len(select_item)) if i != 1]
-
-                            if i == 0:
-                                old_items = item_list
+                        product_td = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_all_elements_located(
+                            (By.XPATH, "//div[@id='CartProducts']//div[contains(@class, 'td')]")))
+                        car_product = []
+                        for product in product_td[1:-2]:
+                            if product.get_attribute("class") == 'td qty':
+                                car_num = product.find_element_by_xpath("//input")
+                                car_product.append(car_num.get_attribute("value"))
                             else:
-                                # 比對完再取代
-                                if old_items == item_list:
-                                    print("Fail: 點擊 手機殼顏色無反應")
-                                    print(f"之前: {old_items}")
-                                    print(f"當前: {item_list}")
-                                    result_list.append("False")
-                                else:
-                                    old_items = item_list
+                                car_product.append(product.text)
+
+                        if (title or sub_title or color) not in car_product[0]\
+                                or price not in car_product or '1' not in car_product:
+                            print(f"Fail: 購物車商品顯示異常")
+                            print(f"購物車商品: {car_product}")
+                            print(f"商品大標題:{title}")
+                            print(f"商品副標題:{sub_title}")
+                            print(f"商品價錢:{price}")
+                            print(f"商品顏色:{color}")
+                            result_list.append("False")
                     except:
-                        print("Fail: 確認 Mod NX產品 -> 手機殼顏色 時異常")
-                        result_list.append("False")
-                except:
-                    print("Fail: 確認 Mod NX產品 時異常")
-                    result_list.append("False")
-
-                # SolidSuit
-                try:
-                    WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                        (By.XPATH, "//p[text()='SolidSuit']"))).click()
-                    # 確認已切換至產品
-                    WebDriverWait(self.br, 10, 1).until(EC.presence_of_element_located(
-                        (By.XPATH, "//div[./p[text()='SolidSuit'] and contains(@class, 'active')]")))
-                    product_option = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_all_elements_located(
-                        (By.XPATH, "//div[@class='product-form__content__options']//p[@class='title']")))
-                    option_list = [option.text for option in product_option[1:]]
-                    select_item = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_all_elements_located(
-                        (By.XPATH, "//div[@class='selected-item']")))
-                    item_list = [select_item[i].text for i in range(len(select_item)) if i != 1]
-                    if '手機殼顏色' not in option_list or\
-                            list(filter(lambda x: '黑' not in x, item_list)):
-                        print("Fail: SolidSuit 產品資訊顯示有誤")
-                        print(option_list)
-                        print(item_list)
+                        print("Fail: 驗證購物車商品 時異常")
                         result_list.append("False")
 
-                    # 手機殼顏色
+                    # 測試總金額
                     try:
-                        plus = WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                            (By.XPATH, "//span[text()='手機殼顏色']/../..//div[contains(@class, 'plus')]")))
-                        plus.click()
+                        # 商品數+1
+                        WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
+                            (By.XPATH, "//span[text()='+']"))).click()
                         time.sleep(1)
-                        # 判斷是否有展開
-                        if 'minus' not in plus.get_attribute('class'):
-                            plus.click()
+                        # wait loading
+                        WebDriverWait(self.br, 10, 1).until_not(EC.presence_of_element_located(
+                            (By.XPATH, "//div[@class='loading__mask loading__mask__show']")))
+                        price_dict = {
+                            "合計": "",
+                            "商品金額": "",
+                            "運費小計": "",
+                            "應付金額": "",
+                        }
 
-                        color_list = WebDriverWait(self.br, 10, 1).until(EC.presence_of_all_elements_located(
-                            (By.XPATH, "//div[@id='color-picker']/ul[@class='color-picker hr']/li")))
-
-                        for i in range(len(color_list)):
-
-                            color_list[i].click()
-                            # 確認已切換至產品
-                            WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                                (By.XPATH, "//button[@class='add-to-cart-btn' and not(contains(@disabled, 'disabled'))]")))
-                            select_item = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_all_elements_located(
-                                (By.XPATH, "//div[@class='selected-item']")))
-                            item_list = [select_item[i].text for i in range(len(select_item)) if i != 1]
-
-                            if i == 0:
-                                old_items = item_list
+                        for i in price_dict:
+                            if i == '合計':
+                                ele = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
+                                    (By.XPATH, "//div[@class='td sumprice not-mobile']")))
+                                price_dict['合計'] = ele.text
                             else:
-                                # 比對完再取代
-                                if old_items == item_list:
-                                    print("Fail: 點擊 手機殼顏色無反應")
-                                    print(f"之前: {old_items}")
-                                    print(f"當前: {item_list}")
-                                    result_list.append("False")
-                                else:
-                                    old_items = item_list
+                                ele = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
+                                    (By.XPATH, f"//p[text()='{i}']/..//p[@class='total__wrap__price']")))
+                                price_dict[i] = ele.text
+
+                            price_dict[i] = price_dict[i][price_dict[i].find('$') + 1:price_dict[i].find('T') - 1]
+                            if len(price_dict[i]) > 3:
+                                price_dict[i] = price_dict[i].replace(',', '')
+
+                        car_num = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
+                            (By.XPATH, "//div[@class='td qty']//input")))
+                        car_num = car_num.get_attribute("value")
+                        if len(price[price.find('$') + 1:price.find('T') - 1]) > 3:
+                            car_price = price.replace(',', '')
+                        else:
+                            car_price = price[price.find('$') + 1:price.find('T') - 1]
+
+                        # 驗證金額
+                        if int(car_price) * int(car_num) != int(price_dict['合計']):
+                            print(f"Fail: 合計顯示異常: {price_dict['合計']}")
+                            print(f"金額: {car_price}")
+                            print(f"數量: {car_num}")
+                            result_list.append("False")
+                        elif int(price_dict['合計']) != int(price_dict['商品金額']):
+                            print(f"Fail: 商品金額顯示異常: {price_dict['商品金額']}")
+                            print(f"合計: {price_dict['合計']}")
+                            result_list.append("False")
+                        elif int(price_dict['商品金額']) + int(price_dict['運費小計']) != int(price_dict['應付金額']):
+                            print(f"Fail: 應付金額顯示異常: {price_dict['應付金額']}")
+                            print(f"商品金額: {price_dict['商品金額']}")
+                            print(f"運費小計: {price_dict['運費小計']}")
+                            result_list.append("False")
                     except:
-                        print("Fail: 確認 SolidSuit產品 -> 手機殼顏色 時異常")
+                        print("Fail: 測試總金額 時異常")
                         result_list.append("False")
-                except:
-                    print("Fail: 確認 SolidSuit產品 時異常")
-                    result_list.append("False")
+
+                    # 清空購物車
+                    try:
+                        WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
+                            (By.XPATH, "//div[@class='td remove']"))).click()
+                        # wait loading
+                        WebDriverWait(self.br, 10, 1).until_not(EC.presence_of_element_located(
+                            (By.XPATH, "//div[@class='loading__mask loading__mask__show']")))
+                        ele = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
+                            (By.XPATH, "//div[@id='cart']//div[@class='expanded-message']")))
+                        if "按這裡開始購物吧" not in ele.text:
+                            print(f"Fail: 清空後購物車顯示訊息異常: {ele.text}")
+                            result_list.append("False")
+                    except:
+                        print("Fail: 清空購物車 時異常")
+                        result_list.append("False")
+            except:
+                print("Fail: 判斷購物車頁面資訊 時異常")
+                result_list.append("False")
 
         results = False if "False" in result_list else True
         self.assertEqual(True, results)
@@ -564,6 +660,7 @@ if __name__ == '__main__':
     test_units = unittest.TestSuite()
     test_units.addTest(AutomationTest("test_register"))
     test_units.addTest(AutomationTest("test_search"))
+    test_units.addTest(AutomationTest("test_shopping_car"))
 
     now = datetime.now().strftime('%m-%d %H_%M_%S')
     root_path = os.getcwd()
