@@ -415,7 +415,7 @@ class AutomationTest(unittest.TestCase):
                         option_list = [option.text for option in product_option[1:]]
                         select_item = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_all_elements_located(
                             (By.XPATH, "//div[@class='selected-item']")))
-                        item_list = [select_item[i].text for i in range(len(select_item)) if i != int(f"{product_dict[product][1]}")]
+                        item_list = [item.text for i, item in enumerate(select_item) if i != int(f"{product_dict[product][1]}")]
 
                         if product == 'SolidSuit':
                             if product_dict[product][2] not in option_list or \
@@ -444,14 +444,14 @@ class AutomationTest(unittest.TestCase):
 
                             color_list = WebDriverWait(self.br, 10, 1).until(EC.presence_of_all_elements_located(
                                 (By.XPATH, "//div[@id='color-picker']/ul[@class='color-picker hr']/li")))
-                            for i in range(len(color_list)):
-                                color_list[i].click()
+                            for i, color in enumerate(color_list):
+                                color.click()
                                 # 確認已切換至產品
                                 WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
                                     (By.XPATH, "//button[@class='add-to-cart-btn' and not(contains(@disabled, 'disabled'))]")))
                                 select_item = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_all_elements_located(
                                     (By.XPATH, "//div[@class='selected-item']")))
-                                item_list = [select_item[i].text for i in range(len(select_item)) if i != 1]
+                                item_list = [item.text for i, item in enumerate(select_item) if i != 1]
 
                                 if i == 0:
                                     old_items = item_list
