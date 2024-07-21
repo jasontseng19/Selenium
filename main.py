@@ -9,34 +9,47 @@ import unittest
 import time
 from datetime import datetime
 import os
+import sys
+import cv2
+import base64
+import numpy as np
 import HTMLTestRunner
+from selenium.webdriver.chrome.service import Service as ChromeService
+from webdriver_manager.chrome import ChromeDriverManager
+color_name = None
 
 
 class AutomationTest(unittest.TestCase):
-    """
-    自動化測試
-    """
+    """ 自動化測試 """
 
     @classmethod
     def setUpClass(cls):
-        cls.br = webdriver.Chrome("driver/chromedriver.exe")
-        cls.br.maximize_window()
-        cls.br.get("https://rhinoshield.tw/")
+        sys.path.append(os.path.abspath(os.path.join(os.getcwd(), "..")))
+        options = webdriver.ChromeOptions()
+        options.add_experimental_option('excludeSwitches', ['enable-automation'])
+        cls.driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
+        cls.driver.maximize_window()
+        cls.driver.get("https://rhinoshield.tw/")
+        # 同意cookie
+        _ele = WebDriverWait(cls.driver, 10).until(EC.element_to_be_clickable(
+            (By.XPATH, "//button[@class='switcher__confirm']")))
+        time.sleep(1)
+        _ele.click()
 
     @classmethod
     def tearDownClass(cls):
-        cls.br.quit()
+        cls.driver.quit()
 
-    def check_display_report(self):
-        """ 確認是否有顯示訂閱電子報 """
+    def close_popup(self):
+        """ 關閉加入會員popup """
 
-        report = True
-        while report:
-            try:
-                WebDriverWait(self.br, 5, 1).until(EC.element_to_be_clickable(
-                    (By.XPATH, "//form[@id='ins-question-group-form']/..//div[contains(@id, 'wrap-close')]"))).click()
-            except:
-                report = False
+        try:
+            # 關閉popup
+            WebDriverWait(self.driver, 5).until(EC.element_to_be_clickable(
+                (By.XPATH, "//div[@data-testid='POPUP']//button[@aria-label='Close dialog 1']"))).click()
+        except:
+            # 若無出現則為pass
+            pass
 
     def test_register(self):
         """ 測試註冊資訊 """
@@ -46,223 +59,130 @@ class AutomationTest(unittest.TestCase):
         page = True
 
         try:
-            WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                (By.XPATH, "//div[@class='functional-item login']"))).click()
-            WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
+            self.close_popup()
+            WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
+                (By.XPATH, "//a[@href='/account']"))).click()
+            WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
                 (By.XPATH, "//a[./input[@value='註冊']]"))).click()
             # 確認是否在註冊頁面
-            WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
+            WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
                 (By.XPATH, "//div[@id='register']//div[@class='form' and not(contains(@style, 'display: none'))]")))
-        except Exception as e:
-            print(e)
+        except:
             print("Fail: 無法進到註冊頁面")
             page = False
             result_list.append("False")
 
         # 確認有進到註冊頁面在進行
         if page:
+            print("\n======= 測試「姓氏」=======")
             # 姓氏
             try:
-                input_first_name = WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
+                input_first_name = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
                     (By.XPATH, "//input[@id='first-name']")))
                 input_first_name.send_keys("123")
                 try:
-                    error_msg = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
+                    error_msg = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
                         (By.XPATH, "//input[@id='first-name']/..//p[@class='form__error-message']")))
                     if "請輸入正確的字元" not in error_msg.text:
-                        print(f"Fail: 姓氏 輸入錯誤字元，顯示訊息有誤:{error_msg.text}")
+                        print(f"Fail:「姓氏」輸入錯誤字元，顯示訊息有誤:{error_msg.text}")
                         result_list.append("False")
                 except:
-                    print("Fail: 姓氏 輸入錯誤字元時無顯示錯誤提示")
+                    print("Fail:「姓氏」輸入錯誤字元時無顯示錯誤提示")
                     result_list.append("False")
+
                 # 輸入正確格式
                 input_first_name.clear()
                 input_first_name.send_keys("asd")
             except:
-                print("Fail: 驗證 姓氏 錯誤時異常")
+                print("Fail: 測試「姓氏」欄位失敗")
                 result_list.append("False")
+            print("*** 測試結束 ***\n")
 
+            print("======= 測試「姓名」=======")
             # 姓名
             try:
-                input_last_name = WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
+                input_last_name = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
                     (By.XPATH, "//input[@id='last-name']")))
                 input_last_name.send_keys("123")
                 try:
-                    error_msg = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
+                    error_msg = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
                         (By.XPATH, "//input[@id='last-name']/..//p[@class='form__error-message']")))
                     if "請輸入正確的字元" not in error_msg.text:
-                        print(f"Fail: 姓名 輸入錯誤字元，顯示訊息有誤:{error_msg.text}")
+                        print(f"Fail:「姓名」輸入錯誤字元，顯示訊息有誤:{error_msg.text}")
                         result_list.append("False")
                 except:
-                    print("Fail: 姓名 輸入錯誤字元時無顯示錯誤提示")
+                    print("Fail:「姓名」輸入錯誤字元時無顯示錯誤提示")
                     result_list.append("False")
+
                 # 輸入正確格式
                 input_last_name.clear()
                 input_last_name.send_keys("asd")
             except:
-                print("Fail: 驗證 姓名 錯誤時異常")
+                print("Fail: 測試「姓名」欄位失敗")
                 result_list.append("False")
+            print("*** 測試結束 ***\n")
 
-            # 生日
-            try:
-                ele = WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                    (By.XPATH, "//input[@id='birthday-input']")))
-                ele.click()
-                WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                    (By.XPATH, "//button[@class='btn-flat picker__today']"))).click()
-                WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                    (By.XPATH, "//button[@class='btn-flat picker__close']"))).click()
-            except:
-                print("Fail: 設定 生日 時異常")
-                result_list.append("False")
-
-            # 性別
-            try:
-                WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                    (By.XPATH, "//select/option[@value='male']"))).click()
-            except:
-                print("Fail: 設定 性別 時異常")
-                result_list.append("False")
-
-            # 手機
-            try:
-                input_phone = WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                    (By.XPATH, "//label[@for='phone-number']/..//input")))
-                input_phone.send_keys("123")
-                try:
-                    error_msg = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
-                        (By.XPATH, "//label[@for='phone-number']/..//p[@class='form__error-message']")))
-                    if "手機號碼格式有誤，請確認輸入的內容" not in error_msg.text:
-                        print(f"Fail: 手機 輸入錯誤字元，顯示訊息有誤:{error_msg.text}")
-                        result_list.append("False")
-                except:
-                    print("Fail: 手機 輸入錯誤字元時無顯示錯誤提示")
-                    result_list.append("False")
-                # 輸入正確格式
-                input_phone.clear()
-                input_phone.send_keys("912345678")
-            except:
-                print("Fail: 設定 手機 時異常")
-                result_list.append("False")
-
+            print("======= 測試「信箱」=======")
             # 信箱
             try:
-                ele = WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                    (By.XPATH, "//label[@for='phone-number']/..//input")))
-                # 移動至該元素避免密碼輸入造成異常
-                self.br.execute_script("arguments[0].scrollIntoView();", ele)
-                input_mail = WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
+                input_mail = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
                     (By.XPATH, "//input[@id='customer-email']")))
                 input_mail.send_keys("123")
                 try:
-                    error_msg = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
+                    error_msg = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
                         (By.XPATH, "//input[@id='customer-email']/..//p[@class='form__error-message']")))
                     if "Email包含無效的網域名稱，請確認輸入的內容" not in error_msg.text:
-                        print(f"Fail: 信箱 輸入錯誤字元，顯示訊息有誤:{error_msg.text}")
+                        print(f"Fail:「信箱」輸入錯誤字元，顯示訊息有誤:{error_msg.text}")
                         result_list.append("False")
                 except:
-                    print("Fail: 信箱 輸入錯誤字元時無顯示錯誤提示")
+                    print("Fail:「信箱」輸入錯誤字元時無顯示錯誤提示")
                     result_list.append("False")
+
                 # 輸入正確格式
                 input_mail.clear()
                 input_mail.send_keys("asd@asd.asd")
             except:
-                print("Fail: 設定 信箱 時異常")
+                print("Fail: 測試「信箱」欄位失敗")
                 result_list.append("False")
+            print("*** 測試結束 ***\n")
 
+            print("======= 測試「密碼」=======")
             # 密碼
             try:
-                input_pwd = WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
+                input_pwd = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
                     (By.XPATH, "//input[@id='password']")))
                 input_pwd.send_keys("asd")
                 try:
-                    error_msg = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
+                    error_msg = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
                         (By.XPATH, "//input[@id='password']/../..//p[@class='form__error-message']")))
                     if "密碼至少要 5 個字元" not in error_msg.text:
-                        print(f"Fail: 密碼 輸入錯誤字元，顯示訊息有誤:{error_msg.text}")
+                        print(f"Fail:「密碼」輸入錯誤字元，顯示訊息有誤:{error_msg.text}")
                         result_list.append("False")
                 except:
-                    print("Fail: 密碼 輸入錯誤字元時無顯示錯誤提示")
+                    print("Fail:「密碼」輸入錯誤字元時無顯示錯誤提示")
                     result_list.append("False")
+
                 # 輸入正確格式
                 input_pwd.clear()
                 input_pwd.send_keys("asdas")
             except:
-                print("Fail: 設定 密碼 時異常")
+                print("Fail: 測試「密碼」欄位失敗")
                 result_list.append("False")
+            print("*** 測試結束 ***\n")
 
-            # 勾選同意並點擊下一步
+            print("======= 測試「點擊完成」=======")
+            # 點擊完成
             try:
-                input_check = WebDriverWait(self.br, 10, 1).until(EC.presence_of_element_located(
-                    (By.XPATH, "//label[@for='accepts-terms-checkbox']")))
-                check_box = WebDriverWait(self.br, 10, 1).until(EC.presence_of_element_located(
-                    (By.XPATH, "//input[@id='accepts-terms-checkbox']")))
-                input_check.click()
-                # 確認是否有勾選
-                if not check_box.is_selected():
-                    input_check.click()
-                time.sleep(1)
-                # 判斷是否可以點擊下一步
-                try:
-                    input_next = WebDriverWait(self.br, 10, 1).until(EC.presence_of_element_located(
-                        (By.XPATH, "//button[normalize-space(text())='下一步']")))
-                    if not input_next.is_enabled():
-                        # 確認是否有錯誤訊息
-                        try:
-                            error_list = WebDriverWait(self.br, 10, 1).until(EC.presence_of_all_elements_located(
-                                (By.XPATH, "//p[@class='form__error-message']")))
-                            print("Fail: 頁面顯示錯誤訊息")
-                            for error in error_list:
-                                print(error.text)
-                        except:
-                            print("Fail: 無錯誤訊息，請確認是否有異常")
-                            result_list.append("False")
-                    else:
-                        try:
-                            input_next.click()
-                            time.sleep(1)
-                            # 等待loading
-                            WebDriverWait(self.br, 10, 1).until_not(EC.presence_of_element_located(
-                                (By.XPATH, "//button[@class='form__button form__button--primary']/i")))
-                            # 應會有手機號碼的錯誤訊息
-                            error_msg = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
-                                (By.XPATH, "//label[@for='phone-number']/..//p[@class='form__error-message']")))
-                            if "手機號碼已被使用，請輸入其他號碼" not in error_msg.text:
-                                print(f"Fail: 手機已被使用，顯示訊息有誤:{error_msg.text}")
-                                result_list.append("False")
-                            # 輸入無重複號碼
-                            input_phone = WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                                (By.XPATH, "//label[@for='phone-number']/..//input")))
-                            input_phone.clear()
-                            input_phone.send_keys("912345679")
-                            input_next.click()
-                            time.sleep(1)
-                            # 等待loading
-                            WebDriverWait(self.br, 10, 1).until_not(EC.presence_of_element_located(
-                                (By.XPATH, "//button[@class='form__button form__button--primary']/i")))
-                            # 判斷是否導轉到驗證頁面
-                            try:
-                                WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
-                                    (By.XPATH, "//div[@id='phone-verify']/div[1]")))
-                            except:
-                                print("Fail: 重新輸入後無導轉到手機驗證頁面")
-                                result_list.append("False")
-                        except:
-                            # 判斷是否導轉到驗證頁面
-                            try:
-                                WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
-                                    (By.XPATH, "//div[@id='phone-verify']/div[1]")))
-                            except:
-                                print("Fail: 無導轉到手機驗證頁面")
-                                result_list.append("False")
-                except:
-                    print("Fail: 點擊下一步 時異常")
-                    result_list.append("False")
-            except:
-                print("Fail: 勾選同意 時異常")
-                result_list.append("False")
+                WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
+                    (By.XPATH, "//button[contains(text(), '完成')]"))).click()
 
-            time.sleep(3)
+                # 關閉認證popup
+                WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
+                    (By.XPATH, "//button[text()='我知道了']"))).click()
+            except:
+                print("Fail: 測試「完成」按鈕失敗")
+                result_list.append("False")
+            print("*** 測試結束 ***\n")
 
         results = False if "False" in result_list else True
         self.assertEqual(True, results)
@@ -272,204 +192,356 @@ class AutomationTest(unittest.TestCase):
 
         # init
         result_list = []
+        search_page_data = []
         product_page = True
-        display_product = True
+        search_result = True
 
-        # 返回首頁
-        try:
-            WebDriverWait(self.br, 10, 1).until(EC.presence_of_element_located(
-                (By.XPATH, "//div[@class='nav-menu__logo']"))).click()
-            try:
-                alert = WebDriverWait(self.br, 10, 1).until(EC.alert_is_present())
-                alert.accept()
-                # 確認是否離開註冊頁面
-                WebDriverWait(self.br, 10, 1).until_not(EC.presence_of_element_located(
-                    (By.XPATH, "//div[@id='register']//div[@class='form' and not(contains(@style, 'display: none'))]")))
-            except:
-                pass
-        except:
-            print("Fail: 返回首頁 時異常")
-            result_list.append("False")
-
+        print("\n======= 測試「搜尋」=======")
         # 搜尋
         try:
-            WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                (By.XPATH, "//i[@class='icon-search']"))).click()
-            input_search = WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                (By.XPATH, "//input[@id='search']")))
-            input_search.send_keys("asd")
+            WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
+                (By.XPATH, "//a[@href='https://shop.rhinoshield.tw/search/designs']"))).click()
+            self.close_popup()
+            input_search = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
+                (By.XPATH, "//input[@type='search']")))
+            input_search.send_keys("qwe")
             input_search.send_keys(Keys.ENTER)
             time.sleep(1)
-            search_result = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
-                (By.XPATH, "//p[contains(@class, 'result__desc') or contains(@class, 'results__desc')]")))
-            if '找不到' not in search_result.text:
-                print(f"Fail: 搜尋商品時顯示錯誤:{search_result.text}")
+            search_msg_ele = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
+                (By.XPATH, "//p[@class='text-title-sm-lighter text-center']")))
+            if '無搜尋結果' not in search_msg_ele.text:
+                print(f"Fail: 「搜尋-未銷售商品」時顯示錯誤:{search_msg_ele.text}")
                 result_list.append("False")
-        except:
-            print("Fail: 搜尋 未銷售商品 時異常")
-            result_list.append("False")
 
-        # 點選商品
-        try:
-            WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                (By.XPATH, "//i[@class='icon-search']"))).click()
-            input_search = WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                (By.XPATH, "//input[@id='search']")))
             input_search.clear()
+            time.sleep(1)
             input_search.send_keys("Naruto")
             input_search.send_keys(Keys.ENTER)
-            self.check_display_report()
-            search_result = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
-                (By.XPATH, "//p[contains(@class, 'result__desc') or contains(@class, 'results__desc')]")))
-            if '搜尋結果' not in search_result.text:
-                print(f"Fail: 搜尋商品時顯示錯誤:{search_result.text}")
+            time.sleep(1)
+
+            WebDriverWait(self.driver, 10).until(EC.invisibility_of_element_located(
+                (By.XPATH, "//p[text()='抱歉，無搜尋結果 ']")))
+
+            if 'Naruto' not in search_msg_ele.text and '項' not in search_msg_ele.text:
+                print(f"Fail: 「搜尋-銷售商品」時顯示錯誤:{search_msg_ele.text}")
                 result_list.append("False")
-            search_list = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_all_elements_located(
-                (By.XPATH, "//div[@class='results__container']/div[@class='results__card']")))
-            product_msg = search_list[0].text
-            product_msg = product_msg.split("\n")
-            search_list[0].click()
-            # 判斷是否還在註冊頁面
-            try:
-                alert = WebDriverWait(self.br, 5, 1).until(EC.alert_is_present())
-                alert.accept()
-            except:
-                pass
+                search_result = False
+        except:
+            print("Fail: 測試「搜尋商品」失敗")
+            result_list.append("False")
+            search_result = False
+        print("*** 測試結束 ***\n")
 
-            self.check_display_report()
-
-            # 判斷顯示商品資訊是否正確
+        if search_result:
+            # 點選商品
             try:
-                title = WebDriverWait(self.br, 20, 1).until(EC.visibility_of_element_located(
-                    (By.XPATH, "//div[@id='caseProduct']//h2[@class='product-form__content__title']")))
-                sub_title = WebDriverWait(self.br, 20, 1).until(EC.visibility_of_element_located(
-                    (By.XPATH, "//div[@id='caseProduct']//p[@class='product-form__content__subtitle']")))
-                if list(filter(lambda x: x not in title.text, product_msg[:-1])) or\
-                        list(filter(lambda x: x not in sub_title.text, product_msg[-1:])):
-                    print("Fail: 商品連結顯示異常")
-                    print(f"搜尋商品名稱: {product_msg}")
-                    print(f"商品大標題:{title.text}")
-                    print(f"商品副標題:{sub_title.text}")
+                # 取第一筆資訊
+                search_ele = WebDriverWait(self.driver, 10).until(EC.presence_of_all_elements_located(
+                    (By.XPATH, "//div[@data-tour-id='search-results']/div[1]//p[not(span)]")))
+                for i in search_ele:
+                    if '/' in i.text:
+                        search_page_data.append(i.text.split(' /')[0])
+                    else:
+                        search_page_data.append(i.text)
+
+                # 點擊第一筆
+                WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
+                    (By.XPATH, "//div[@data-tour-id='search-results']/div[1]"))).click()
+                time.sleep(1)
+                handles = self.driver.window_handles
+                self.driver.switch_to.window(handles[-1])
+
+                self.close_popup()
+
+                # 關閉試試看
+                WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
+                    (By.XPATH, "//div[@class='close']"))).click()
+
+                WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
+                    (By.XPATH, "//div[@id='caseProduct']")))
+                time.sleep(1)
+
+                # 判斷跳轉後的商品資訊是否正確
+                print("======= 測試「驗證上方 select 資訊」=======")
+                try:
+                    # 上方 select 資訊
+                    # 產品
+                    product = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
+                        (By.XPATH, "//div[@class='product-selector']/p"))).text
+                    if product not in search_page_data:
+                        print(f"Fail:「產品」顯示有誤:{product}")
+                        print(f"搜尋頁面資訊:{search_page_data}")
+                        result_list.append("False")
+
+                    # 型號
+                    device = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
+                        (By.XPATH, "//div[@class='selected']"))).text
+                    if device not in search_page_data:
+                        print(f"Fail:「型號」顯示有霧:{device}")
+                        print(f"搜尋頁面資訊:{search_page_data}")
+                        result_list.append("False")
+
+                    # 系列
+                    product_content = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
+                        (By.XPATH, "//div[@class='product-form']"))).text
+                    for i in search_page_data:
+                        if i not in product_content:
+                            print(f"Fail:「{i}」 不在此商品頁面")
+                            result_list.append("False")
+                            product_page = False
+                except:
+                    print("Fail:「確認商品」時失敗")
                     result_list.append("False")
                     product_page = False
+                print("*** 測試結束 ***\n")
             except:
-                print("Fail: 判斷商品 時異常")
+                print("Fail:「點選商品」時失敗")
                 result_list.append("False")
                 product_page = False
-        except:
-            print("Fail: 搜尋 目前銷售商品 時異常")
-            result_list.append("False")
-            product_page = False
 
         # 確認商品頁面正確在進行
         if product_page:
+            # 當前window_id
+            current_id = self.driver.current_window_handle
+            all_handles = self.driver.window_handles
+            old_color_id = None
+            old_img_src = None
+            old_image = None
+
+            print("======= 測試「裝置顏色」=======")
+            # 裝置顏色(手機顏色)
             try:
-                # 展開產品
-                plus = WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                    (By.XPATH, "//span[text()='選擇產品']/../..//div[contains(@class, 'plus')]")))
-                plus.click()
-                time.sleep(1)
-                # 判斷是否有展開
-                if 'minus' not in plus.get_attribute('class'):
-                    plus.click()
-                WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
-                    (By.XPATH, "//p[text()='Clear']")))
-            except:
-                print("Fail: 展開產品 時異常")
-                result_list.append("False")
-                display_product = False
+                phone_color_list = WebDriverWait(self.driver, 10).until(EC.presence_of_all_elements_located(
+                    (By.XPATH, "//ul[@class='color-picker']/li")))
+                for i in phone_color_list:
+                    if i.get_attribute('class') == 'active':
+                        old_color_id = i.get_attribute('id')
+                        old_img_src = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
+                            (By.XPATH, "//div[@class='product-images-wrap']"
+                                       "//img[@class='fluid-img__img']"))).get_attribute('src')
+                        continue
 
-            if display_product:
-                product_dict = {
-                    "Clear": [
-                        "//div[@class='product-form__content__options']//p[@class='title']",
-                        "1",
-                        "手機殼顏色",
-                        "掛繩組(加購)",
-                        "透明",
-                    ],
-                    "Mod NX": [
-                        "//div[@class='product-form__content__options']//p[@class='title' or @class='bundle__docs']",
-                        "2",
-                        "Mod NX 整組（手機殼+背板）",
-                        "手機殼顏色",
-                        "黑",
-                    ],
-                    "SolidSuit": [
-                        "//div[@class='product-form__content__options']//p[@class='title']",
-                        "1",
-                        "手機殼顏色",
-                        "黑",
-                    ],
-                }
-                for product in product_dict:
-                    try:
-                        WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                            (By.XPATH, f"//p[text()='{product}']"))).click()
-                        self.check_display_report()
-                        # 確認已切換至產品
-                        WebDriverWait(self.br, 10, 1).until(EC.presence_of_element_located(
-                            (By.XPATH, f"//div[./p[text()='{product}'] and contains(@class, 'active')]")))
-                        product_option = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_all_elements_located(
-                            (By.XPATH, f"{product_dict[product][0]}")))
-                        option_list = [option.text for option in product_option[1:]]
-                        select_item = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_all_elements_located(
-                            (By.XPATH, "//div[@class='selected-item']")))
-                        item_list = [item.text for i, item in enumerate(select_item) if i != int(f"{product_dict[product][1]}")]
+                    i.find_element(By.XPATH, './/input').click()
+                    time.sleep(1)
+                    # wait loading
+                    WebDriverWait(self.driver, 10).until(EC.invisibility_of_element_located(
+                        (By.XPATH, "//div[@class='loading__mask loading__mask__show']"
+                                   "/div[@class='loading__indicator']")))
 
-                        if product == 'SolidSuit':
-                            if product_dict[product][2] not in option_list or \
-                                    list(filter(lambda x: product_dict[product][3] not in x, item_list)):
-                                print(f"Fail: {product} 產品資訊顯示有誤")
-                                print(option_list)
-                                print(item_list)
-                                result_list.append("False")
+                    new_color_id = i.get_attribute('id')
+
+                    if i.get_attribute('class') != 'active':
+                        print(f"Fail:「{new_color_id}」切換顏色失敗")
+                        result_list.append("False")
+                        continue
+                    else:
+                        img_src = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
+                            (By.XPATH, "//div[@class='product-images-wrap']"
+                                       "//img[@class='fluid-img__img']"))).get_attribute('src')
+
+                        if img_src == old_img_src:
+                            print(f"Fail:「{new_color_id}」切換網址無變化")
+                            print(f"「{old_color_id}」網址:{old_img_src}")
+                            print(f"「{new_color_id}」網址:{img_src}")
+                            result_list.append("False")
+                            continue
                         else:
-                            if (product_dict[product][2] or product_dict[product][3]) not in option_list or \
-                                    list(filter(lambda x: product_dict[product][4] not in x, item_list)):
-                                print(f"Fail: {product} 產品資訊顯示有誤")
-                                print(option_list)
-                                print(item_list)
+                            # 比對圖片
+
+                            if not isinstance(old_image, np.ndarray):
+                                # 新分頁，開舊圖片
+                                new_window = f"window.open('{old_img_src}');"
+                                self.driver.execute_script(new_window)
+                                time.sleep(2)
+
+                                handles = self.driver.window_handles
+                                for w in handles:
+                                    if w not in all_handles:
+                                        self.driver.switch_to.window(w)
+
+                                # 擷取當下畫面
+                                old_canvas_base64 = self.driver.get_screenshot_as_base64()
+                                old_canvas_png = base64.b64decode(old_canvas_base64)
+                                old_image = cv2.imdecode(np.frombuffer(old_canvas_png, np.uint8), 1)
+
+                                self.driver.close()
+                                self.driver.switch_to.window(current_id)
+
+                            # 新分頁，開新圖片
+                            new_window = f"window.open('{img_src}');"
+                            self.driver.execute_script(new_window)
+                            time.sleep(2)
+
+                            handles = self.driver.window_handles
+                            for w in handles:
+                                if w not in all_handles:
+                                    self.driver.switch_to.window(w)
+
+                            # 擷取當下畫面
+                            canvas_base64 = self.driver.get_screenshot_as_base64()
+                            canvas_png = base64.b64decode(canvas_base64)
+                            target = cv2.imdecode(np.frombuffer(canvas_png, np.uint8), 1)
+
+                            res = cv2.matchTemplate(old_image, target, cv2.TM_CCOEFF_NORMED)
+                            _, max_v, _, _ = cv2.minMaxLoc(res)
+
+                            if max_v == 1:
+                                print(f"Fail:「{new_color_id}」圖片無變化")
+                                print(f"「{old_color_id}」圖片網址:{old_img_src}")
+                                print(f"「{new_color_id}」圖片網址:{img_src}")
                                 result_list.append("False")
+                            else:
+                                old_color_id = new_color_id
+                                old_img_src = img_src
+                                old_image = target
 
-                        # 手機殼顏色
-                        try:
-                            plus = WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                                (By.XPATH, "//span[text()='手機殼顏色']/../..//div[contains(@class, 'plus')]")))
-                            plus.click()
+                            self.driver.close()
+                            self.driver.switch_to.window(current_id)
+            except:
+                print("Fail: 測試「裝置顏色」失敗")
+                result_list.append("False")
+            print("*** 測試結束 ***\n")
+
+            print("======= 測試「手機殼顏色」=======")
+            # 手機殼顏色
+            try:
+                old_color_name = None
+                old_color_id = None
+                old_img_src = None
+                old_image = None
+
+                # 確認是否單一版本
+                try:
+                    WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
+                        (By.XPATH, "//span[text()='版本']")))
+                    only_one_type = False
+                except:
+                    only_one_type = True
+
+                if not only_one_type:
+                    # 確認版本有無展開
+                    _ele = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
+                        (By.XPATH, "//div[@class='product-form__content__options selectors types-selectors']/div")))
+                    if 'active' not in _ele.get_attribute('class'):
+                        _ele.click()
+                        time.sleep(1)
+
+                    type_list = WebDriverWait(self.driver, 10).until(EC.presence_of_all_elements_located(
+                        (By.XPATH, "//div[@class='drop-folder__slot-wrapper']//div[./p]")))
+                    for i in type_list:
+                        if 'active' not in i.get_attribute('class'):
+                            i.click()
                             time.sleep(1)
-                            # 判斷是否有展開
-                            if 'minus' not in plus.get_attribute('class'):
-                                plus.click()
 
-                            color_list = WebDriverWait(self.br, 10, 1).until(EC.presence_of_all_elements_located(
-                                (By.XPATH, "//div[@id='color-picker']/ul[@class='color-picker hr']/li")))
-                            for i, color in enumerate(color_list):
-                                color.click()
-                                # 確認已切換至產品
-                                WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                                    (By.XPATH, "//button[@class='add-to-cart-btn' and not(contains(@disabled, 'disabled'))]")))
-                                select_item = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_all_elements_located(
-                                    (By.XPATH, "//div[@class='selected-item']")))
-                                item_list = [item.text for i, item in enumerate(select_item) if i != 1]
+                        # 確認手機殼顏色有無展開
+                        _ele = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
+                            (By.XPATH, "//div[@class='product-form__content__options"
+                                       " selectors case-color-selectors']/div")))
+                        if 'active' not in _ele.get_attribute('class'):
+                            _ele.click()
+                            time.sleep(1)
 
-                                if i == 0:
-                                    old_items = item_list
+                        # 取得所有顏色
+                        color_list = WebDriverWait(self.driver, 10).until(EC.presence_of_all_elements_located(
+                            (By.XPATH, "//div[@class='drop-folder__slot-wrapper']//div[@id='color-picker']/ul/li")))
+                        for color in color_list:
+                            if i.get_attribute('class') == 'active':
+                                old_color_name = _ele.text.split(' ')[-1]
+                                old_color_id = color.get_attribute('id')
+                                old_img_src = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
+                                    (By.XPATH, "//div[@class='product-images-wrap']"
+                                               "//img[@class='fluid-img__img']"))).get_attribute('src')
+                                continue
+
+                            color.click()
+                            # wait loading
+                            WebDriverWait(self.driver, 10).until(EC.invisibility_of_element_located(
+                                (By.XPATH, "//div[@class='loading__mask loading__mask__show']"
+                                           "/div[@class='loading__indicator']")))
+
+                            new_color_name = _ele.text.split(' ')[-1]
+                            global color_name
+                            color_name = new_color_name
+                            new_color_id = color.get_attribute('id')
+
+                            if 'active' not in i.get_attribute('class'):
+                                print(f"Fail:「{new_color_id}」切換顏色失敗")
+                                result_list.append("False")
+                                continue
+                            else:
+                                img_src = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
+                                    (By.XPATH, "//div[@class='product-images-wrap']"
+                                               "//img[@class='fluid-img__img']"))).get_attribute('src')
+
+                                if img_src == old_img_src:
+                                    print(f"Fail:「{new_color_id}」切換後網址無變化")
+                                    print(f"「{old_color_id}」舊網址:{old_img_src}")
+                                    print(f"「{new_color_id}」新網址:{img_src}")
+                                    result_list.append("False")
+                                    continue
+                                elif new_color_name == old_color_name:
+                                    print(f"Fail:「{new_color_id}」切換後顏色名稱無變化")
+                                    print(f"「{old_color_id}」舊名稱:{old_color_name}")
+                                    print(f"「{new_color_id}」新名稱:{new_color_name}")
+                                    result_list.append("False")
+                                    continue
                                 else:
-                                    # 比對完再取代
-                                    if old_items == item_list:
-                                        print(f"Fail: {product} 點擊 手機殼顏色無反應")
-                                        print(f"之前: {old_items}")
-                                        print(f"當前: {item_list}")
+                                    # 比對圖片
+
+                                    if not isinstance(old_image, np.ndarray):
+                                        # 新分頁，開舊圖片
+                                        new_window = f"window.open('{old_img_src}');"
+                                        self.driver.execute_script(new_window)
+                                        time.sleep(2)
+
+                                        handles = self.driver.window_handles
+                                        for w in handles:
+                                            if w not in all_handles:
+                                                self.driver.switch_to.window(w)
+
+                                        # 擷取當下畫面
+                                        old_canvas_base64 = self.driver.get_screenshot_as_base64()
+                                        old_canvas_png = base64.b64decode(old_canvas_base64)
+                                        old_image = cv2.imdecode(np.frombuffer(old_canvas_png, np.uint8), 1)
+
+                                        self.driver.close()
+                                        self.driver.switch_to.window(current_id)
+
+                                    # 新分頁，開新圖片
+                                    new_window = f"window.open('{img_src}');"
+                                    self.driver.execute_script(new_window)
+                                    time.sleep(2)
+
+                                    handles = self.driver.window_handles
+                                    for w in handles:
+                                        if w not in all_handles:
+                                            self.driver.switch_to.window(w)
+
+                                    # 擷取當下畫面
+                                    canvas_base64 = self.driver.get_screenshot_as_base64()
+                                    canvas_png = base64.b64decode(canvas_base64)
+                                    target = cv2.imdecode(np.frombuffer(canvas_png, np.uint8), 1)
+
+                                    res = cv2.matchTemplate(old_image, target, cv2.TM_CCOEFF_NORMED)
+                                    _, max_v, _, _ = cv2.minMaxLoc(res)
+
+                                    if max_v == 1:
+                                        print(f"Fail:「{new_color_id}」圖片無變化")
+                                        print(f"「{old_color_id}」圖片網址:{old_img_src}")
+                                        print(f"「{new_color_id}」圖片網址:{img_src}")
                                         result_list.append("False")
                                     else:
-                                        old_items = item_list
-                        except:
-                            print(f"Fail: 確認 {product}產品 -> 手機殼顏色 時異常")
-                            result_list.append("False")
-                    except:
-                        print(f"Fail: 確認 {product}產品 時異常")
-                        result_list.append("False")
+                                        old_color_name = new_color_name
+                                        old_color_id = new_color_id
+                                        old_img_src = img_src
+                                        old_image = target
+
+                                    self.driver.close()
+                                    self.driver.switch_to.window(current_id)
+            except:
+                print("Fail: 測試「手機殼顏色」失敗 ")
+                result_list.append("False")
+            print("*** 測試結束 ***\n")
 
         results = False if "False" in result_list else True
         self.assertEqual(True, results)
@@ -483,107 +555,115 @@ class AutomationTest(unittest.TestCase):
         title = None
         sub_title = None
         price = None
-        color = None
 
+        print("\n======= 測試「加入購物車」=======")
         # 加入購物車
         try:
             # 取商品資訊
-            title_ele = WebDriverWait(self.br, 20, 1).until(EC.visibility_of_element_located(
-                (By.XPATH, "//div[@id='caseProduct']//h2[@class='product-form__content__title']")))
-            title = title_ele.text
-            sub_title_ele = WebDriverWait(self.br, 20, 1).until(EC.visibility_of_element_located(
-                (By.XPATH, "//div[@id='caseProduct']//p[@class='product-form__content__subtitle']")))
-            sub_title = sub_title_ele.text
-            price_ele = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
-                (By.XPATH, "//div[@id='caseProduct']//span[@class='total-price']")))
-            price = price_ele.text
-            item = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
-                (By.XPATH, "//div[@class='selected-item']//p")))
-            color = item.text[item.text.find('(')+1:item.text.find('/')-1]
-            WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                (By.XPATH, "//button[@class='add-to-cart-btn']"))).click()
-            # 關閉加購商品
-            WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                (By.XPATH, "//div[@id='add__on']//button[@class='add__on__btn add__on__btn--skip']"))).click()
+            title = WebDriverWait(self.driver, 20).until(EC.visibility_of_element_located(
+                (By.XPATH, "//div[@id='caseProduct']//h2[@class='product-form__content__title']"))).text
+            sub_title = WebDriverWait(self.driver, 20).until(EC.visibility_of_element_located(
+                (By.XPATH, "//div[@id='caseProduct']//p[@class='product-form__content__subtitle']"))).text
+            price = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
+                (By.XPATH, "//div[@id='caseProduct']//span[@class='total-price']"))).text
+            WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
+                (By.XPATH, "//button[@class='add-to-cart-btn available']"))).click()
+
+            # 加購頁面
+            WebDriverWait(self.driver, 20).until(EC.visibility_of_element_located(
+                (By.XPATH, "//div[@data-title='保護貼']")))
             time.sleep(1)
+
             # 驗證數量
-            car_num = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
-                (By.XPATH, "//div[@class='functional-list']//p[@class='cart-quantity']")))
-            if "1" not in car_num.text:
-                print(f"Fail: 購物車數量顯示異常: {car_num.text}")
+            car = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
+                (By.XPATH, "//li[@title='購物車']")))
+            car_num = car.find_element(By.XPATH, "./a//span").text
+            if "1" not in car_num:
+                print(f"Fail: 「購物車-數量」顯示錯誤: {car_num}")
                 result_list.append("False")
+
             # 移至購物車圖示判斷顯示商品
-            ActionChains(self.br).move_to_element(car_num).perform()
-            car_product = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
-                (By.XPATH, "//div[@id='functional-preview']//div[@class='item-title']")))
-            if (title or sub_title or price or "x 1") not in car_product.text:
-                print("Fail: 購物車商品有誤")
-                print(f"購物車商品內容: {car_product.text}")
-                print(f"商品大標題:{title}")
-                print(f"商品副標題:{sub_title}")
-                print(f"商品價錢:{price}")
+            ActionChains(self.driver).move_to_element(car).perform()
+            time.sleep(1)
+            car_product = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
+                (By.XPATH, "//p[text()='購物車']/following-sibling::div/div[./a]"))).text
+
+            _check = [i for i in [title, sub_title, price, 'x 1'] if i not in car_product]
+            if len(_check) != 0:
+                print("Fail:「購物車-商品有誤」")
+                print(f"「購物車-商品內容」: {car_product}")
+                print(f"「商品頁-大標題」:{title}")
+                print(f"「商品頁-副標題」:{sub_title}")
+                print(f"「商品頁-價錢」:{price}")
                 result_list.append("False")
         except:
-            print("Fail: 加入購物車 時異常")
+            print("Fail: 測試「加入購物車」失敗")
             result_list.append("False")
             add_car = False
+        print("*** 測試結束 ***\n")
 
         # 有正常加入購物車在進行判斷
         if add_car:
             # 進入購物車頁面
             try:
-                WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
-                    (By.XPATH, "//div[@class='functional-list']//p[@class='cart-quantity']"))).click()
-                WebDriverWait(self.br, 10, 1).until_not(EC.visibility_of_element_located(
-                    (By.XPATH, "//div[@id='caseProduct']//h2[@class='product-form__content__title']")))
-                WebDriverWait(self.br, 10, 1).until(EC.presence_of_element_located(
-                    (By.XPATH, "//main[@id='MainContent']")))
+                WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
+                    (By.XPATH, "//button[text()='查看購物車']"))).click()
+                time.sleep(1)
                 # wait loading
-                WebDriverWait(self.br, 10, 1).until_not(EC.presence_of_element_located(
+                WebDriverWait(self.driver, 10).until_not(EC.presence_of_element_located(
                     (By.XPATH, "//div[@class='loading__mask loading__mask__show']")))
                 # 判斷購物車是否有商品
                 try:
-                    ele = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
-                        (By.XPATH, "//div[@id='cart']//div[@class='expanded-message']")))
-                    if "購物車是空的喔！" in ele.text:
-                        print(f"Fail: {ele.text}")
+                    ele = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
+                        (By.XPATH, "//div[@id='cart']//div[@class='expanded-message']"))).text
+                    if "空的" in ele:
+                        print(f"Fail: {ele}")
                         result_list.append("False")
                     else:
-                        print(f"Fail: 購物車顯示訊息異常: {ele.text}")
+                        print(f"Fail: 「購物車頁面」顯示錯誤訊息: {ele}")
                         result_list.append("False")
                 except:
+                    print("======= 測試「檢查購物車資訊」=======")
                     try:
-                        product_td = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_all_elements_located(
+                        product_td = WebDriverWait(self.driver, 10).until(EC.visibility_of_all_elements_located(
                             (By.XPATH, "//div[@id='CartProducts']//div[contains(@class, 'td')]")))
                         car_product = []
                         for product in product_td[1:-2]:
                             if product.get_attribute("class") == 'td qty':
-                                car_num = product.find_element_by_xpath("//input")
+                                car_num = product.find_element(By.XPATH, "//input")
                                 car_product.append(car_num.get_attribute("value"))
                             else:
-                                car_product.append(product.text)
+                                if '\n' in product.text:
+                                    _text = product.text.split('\n')
+                                    for _ in _text:
+                                        car_product.append(_)
+                                else:
+                                    car_product.append(product.text)
 
-                        if (title or sub_title or color) not in car_product[0]\
-                                or price not in car_product or '1' not in car_product:
-                            print(f"Fail: 購物車商品顯示異常")
-                            print(f"購物車商品: {car_product}")
-                            print(f"商品大標題:{title}")
-                            print(f"商品副標題:{sub_title}")
-                            print(f"商品價錢:{price}")
-                            print(f"商品顏色:{color}")
+                        check1 = len([i for i in [title, sub_title] if i not in car_product[0]])
+                        check2 = len([i for i in [color_name, price, '1'] if i not in car_product])
+                        if (check1 or check2) != 0:
+                            print(f"Fail:「購物車頁面-商品」顯示錯誤")
+                            print(f"「購物車頁面-商品」: {car_product}")
+                            print(f"「商品頁-大標題」:{title}")
+                            print(f"「商品頁-副標題」:{sub_title}")
+                            print(f"「商品頁-價錢」:{price}")
+                            print(f"「商品頁-顏色」:{color_name}")
                             result_list.append("False")
                     except:
-                        print("Fail: 驗證購物車商品 時異常")
+                        print("Fail: 檢查「購物車頁面-商品」時失敗")
                         result_list.append("False")
+                    print("*** 測試結束 ***\n")
 
-                    # 測試總金額
+                    print("======= 測試「金額」=======")
+                    # 測試金額
                     try:
                         # 商品數+1
-                        WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
+                        WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
                             (By.XPATH, "//span[text()='+']"))).click()
                         time.sleep(1)
                         # wait loading
-                        WebDriverWait(self.br, 10, 1).until_not(EC.presence_of_element_located(
+                        WebDriverWait(self.driver, 10).until_not(EC.presence_of_element_located(
                             (By.XPATH, "//div[@class='loading__mask loading__mask__show']")))
                         price_dict = {
                             "合計": "",
@@ -594,62 +674,63 @@ class AutomationTest(unittest.TestCase):
 
                         for i in price_dict:
                             if i == '合計':
-                                ele = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
+                                ele = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
                                     (By.XPATH, "//div[@class='td sumprice not-mobile']")))
-                                price_dict['合計'] = ele.text
+                                price_dict['合計'] = "".join(filter(lambda x: x in '0123456789', ele.text))
                             else:
-                                ele = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
+                                ele = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
                                     (By.XPATH, f"//p[text()='{i}']/..//p[@class='total__wrap__price']")))
-                                price_dict[i] = ele.text
+                                price_dict[i] = "".join(filter(lambda x: x in '0123456789', ele.text))
 
-                            price_dict[i] = price_dict[i][price_dict[i].find('$') + 1:price_dict[i].find('T') - 1]
-                            if len(price_dict[i]) > 3:
-                                price_dict[i] = price_dict[i].replace(',', '')
+                        # 數量
+                        qty = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
+                            (By.XPATH, "//div[@class='td qty']//input"))).get_attribute("value")
 
-                        car_num = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
-                            (By.XPATH, "//div[@class='td qty']//input")))
-                        car_num = car_num.get_attribute("value")
-                        if len(price[price.find('$') + 1:price.find('T') - 1]) > 3:
-                            car_price = price.replace(',', '')
-                        else:
-                            car_price = price[price.find('$') + 1:price.find('T') - 1]
+                        # 金額
+                        price = "".join(filter(lambda x: x in '0123456789', price))
 
                         # 驗證金額
-                        if int(car_price) * int(car_num) != int(price_dict['合計']):
-                            print(f"Fail: 合計顯示異常: {price_dict['合計']}")
-                            print(f"金額: {car_price}")
-                            print(f"數量: {car_num}")
+                        if int(price) * int(qty) != int(price_dict['合計']):
+                            print("Fail:「金額 x 數量」與「合計金額」不同")
+                            print(f"「金額」: {price}")
+                            print(f"「數量」: {qty}")
+                            print(f"「合計金額」: {price_dict['合計']}")
                             result_list.append("False")
                         elif int(price_dict['合計']) != int(price_dict['商品金額']):
-                            print(f"Fail: 商品金額顯示異常: {price_dict['商品金額']}")
-                            print(f"合計: {price_dict['合計']}")
+                            print("Fail: 「合計金額」與「商品金額」不同")
+                            print(f"「合計金額」: {price_dict['合計']}")
+                            print(f"「商品金額」: {price_dict['商品金額']}")
                             result_list.append("False")
                         elif int(price_dict['商品金額']) + int(price_dict['運費小計']) != int(price_dict['應付金額']):
-                            print(f"Fail: 應付金額顯示異常: {price_dict['應付金額']}")
-                            print(f"商品金額: {price_dict['商品金額']}")
-                            print(f"運費小計: {price_dict['運費小計']}")
+                            print("Fail:「商品金額 + 運費小計」與「應付金額」不同顯示異常")
+                            print(f"「商品金額」: {price_dict['商品金額']}")
+                            print(f"「運費小計」: {price_dict['運費小計']}")
+                            print(f"「應付金額」: {price_dict['應付金額']}")
                             result_list.append("False")
                     except:
-                        print("Fail: 測試總金額 時異常")
+                        print("Fail: 測試「金額」時失敗")
                         result_list.append("False")
+                    print("*** 測試結束 ***\n")
 
+                    print("======= 測試「清空購物車」=======")
                     # 清空購物車
                     try:
-                        WebDriverWait(self.br, 10, 1).until(EC.element_to_be_clickable(
+                        WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
                             (By.XPATH, "//div[@class='td remove']"))).click()
                         # wait loading
-                        WebDriverWait(self.br, 10, 1).until_not(EC.presence_of_element_located(
+                        WebDriverWait(self.driver, 10).until_not(EC.presence_of_element_located(
                             (By.XPATH, "//div[@class='loading__mask loading__mask__show']")))
-                        ele = WebDriverWait(self.br, 10, 1).until(EC.visibility_of_element_located(
+                        ele = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
                             (By.XPATH, "//div[@id='cart']//div[@class='expanded-message']")))
                         if "按這裡開始購物吧" not in ele.text:
-                            print(f"Fail: 清空後購物車顯示訊息異常: {ele.text}")
+                            print(f"Fail:「清空後購物車」顯示訊息異常: {ele.text}")
                             result_list.append("False")
                     except:
-                        print("Fail: 清空購物車 時異常")
+                        print("Fail: 測試「清空購物車」時失敗")
                         result_list.append("False")
+                    print("*** 測試結束 ***\n")
             except:
-                print("Fail: 判斷購物車頁面資訊 時異常")
+                print("Fail: 測試「判斷購物車頁面資訊」失敗")
                 result_list.append("False")
 
         results = False if "False" in result_list else True
@@ -663,12 +744,10 @@ if __name__ == '__main__':
     test_units.addTest(AutomationTest("test_shopping_car"))
 
     now = datetime.now().strftime('%m-%d %H_%M_%S')
-    root_path = os.getcwd()
     filename = now + '.html'
-    fp = open(filename, 'wb+')
-    runner = HTMLTestRunner.HTMLTestRunner(
-        stream=fp,
-        title='網頁測試',
-    )
-    runner.run(test_units)
-    fp.close()
+    with open(filename, 'wb+') as fp:
+        runner = HTMLTestRunner.HTMLTestRunner(
+            stream=fp,
+            title='網頁自動化測試',
+        )
+        runner.run(test_units)
