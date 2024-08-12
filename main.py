@@ -46,7 +46,7 @@ class AutomationTest(unittest.TestCase):
         try:
             # 關閉popup
             WebDriverWait(self.driver, 5).until(EC.element_to_be_clickable(
-                (By.XPATH, "//div[@data-testid='POPUP']//button[@aria-label='Close dialog 1']"))).click()
+                (By.XPATH, "//*[name()='svg']/*[name()='title']/.."))).click()
         except:
             # 若無出現則為pass
             pass
@@ -208,7 +208,7 @@ class AutomationTest(unittest.TestCase):
             input_search.send_keys(Keys.ENTER)
             time.sleep(1)
             search_msg_ele = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
-                (By.XPATH, "//p[@class='text-title-sm-lighter text-center']")))
+                (By.XPATH, "//h1[text()='犀牛盾設計展間']/following-sibling::p")))
             if '無搜尋結果' not in search_msg_ele.text:
                 print(f"Fail: 「搜尋-未銷售商品」時顯示錯誤:{search_msg_ele.text}")
                 result_list.append("False")
@@ -218,7 +218,6 @@ class AutomationTest(unittest.TestCase):
             input_search.send_keys("Naruto")
             input_search.send_keys(Keys.ENTER)
             time.sleep(1)
-
             WebDriverWait(self.driver, 10).until(EC.invisibility_of_element_located(
                 (By.XPATH, "//p[text()='抱歉，無搜尋結果 ']")))
 
@@ -240,7 +239,7 @@ class AutomationTest(unittest.TestCase):
                     (By.XPATH, "//div[@data-tour-id='search-results']/div[1]//p[not(span)]")))
                 for i in search_ele:
                     if '/' in i.text:
-                        search_page_data.append(i.text.split(' /')[0])
+                        search_page_data.append(i.text.replace(' /', ''))
                     else:
                         search_page_data.append(i.text)
 
@@ -253,42 +252,37 @@ class AutomationTest(unittest.TestCase):
 
                 self.close_popup()
 
-                # 關閉試試看
+                # 關閉上方廣告bar
                 WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
-                    (By.XPATH, "//div[@class='close']"))).click()
-
-                WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
-                    (By.XPATH, "//div[@id='caseProduct']")))
-                time.sleep(1)
+                    (By.XPATH, "//div[@class='flex w-full bg-black']//*[name()='svg' and @viewBox='0 0 24 24']"))).click()
 
                 # 判斷跳轉後的商品資訊是否正確
-                print("======= 測試「驗證上方 select 資訊」=======")
+                print("======= 測試「驗證 - 系列/型號/產品 資訊」=======")
                 try:
-                    # 上方 select 資訊
+                    # 系列
+                    product_series = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
+                        (By.XPATH, "//h1"))).text
+                    if product_series not in search_page_data:
+                        print(f"Fail:「系列」顯示有誤:{product_series}")
+                        print(f"搜尋頁面資訊:{search_page_data}")
+                        result_list.append("False")
+                        product_page = False
+
+                    # 型號
+                    device = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
+                        (By.XPATH, "//p[text()='選擇型號']/following-sibling::p"))).text
+                    if device not in search_page_data:
+                        print(f"Fail:「型號」顯示有誤:{device}")
+                        print(f"搜尋頁面資訊:{search_page_data}")
+                        result_list.append("False")
+
                     # 產品
                     product = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
-                        (By.XPATH, "//div[@class='product-selector']/p"))).text
+                        (By.XPATH, "//p[text()='選擇產品']/following-sibling::p"))).text
                     if product not in search_page_data:
                         print(f"Fail:「產品」顯示有誤:{product}")
                         print(f"搜尋頁面資訊:{search_page_data}")
                         result_list.append("False")
-
-                    # 型號
-                    device = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
-                        (By.XPATH, "//div[@class='selected']"))).text
-                    if device not in search_page_data:
-                        print(f"Fail:「型號」顯示有霧:{device}")
-                        print(f"搜尋頁面資訊:{search_page_data}")
-                        result_list.append("False")
-
-                    # 系列
-                    product_content = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
-                        (By.XPATH, "//div[@class='product-form']"))).text
-                    for i in search_page_data:
-                        if i not in product_content:
-                            print(f"Fail:「{i}」 不在此商品頁面")
-                            result_list.append("False")
-                            product_page = False
                 except:
                     print("Fail:「確認商品」時失敗")
                     result_list.append("False")
@@ -301,10 +295,6 @@ class AutomationTest(unittest.TestCase):
 
         # 確認商品頁面正確在進行
         if product_page:
-            # 當前window_id
-            current_id = self.driver.current_window_handle
-            all_handles = self.driver.window_handles
-            old_color_id = None
             old_img_src = None
             old_image = None
 
@@ -312,71 +302,68 @@ class AutomationTest(unittest.TestCase):
             # 裝置顏色(手機顏色)
             try:
                 phone_color_list = WebDriverWait(self.driver, 10).until(EC.presence_of_all_elements_located(
-                    (By.XPATH, "//ul[@class='color-picker']/li")))
-                for i in phone_color_list:
-                    if i.get_attribute('class') == 'active':
-                        old_color_id = i.get_attribute('id')
-                        old_img_src = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
-                            (By.XPATH, "//div[@class='product-images-wrap']"
-                                       "//img[@class='fluid-img__img']"))).get_attribute('src')
-                        continue
+                    (By.XPATH, "//div[@class='absolute top-[calc(100%+9px)] left-0 z-dropdown py-4 px-8 bg-gray-10 "
+                               "rounded-1 cursor-default shadow-md']//span")))
 
-                    i.find_element(By.XPATH, './/input').click()
-                    time.sleep(1)
-                    # wait loading
-                    WebDriverWait(self.driver, 10).until(EC.invisibility_of_element_located(
-                        (By.XPATH, "//div[@class='loading__mask loading__mask__show']"
-                                   "/div[@class='loading__indicator']")))
+                for index, i in enumerate(phone_color_list):
+                    color_num = index + 1
+                    if ' before:opacity-100 ' in i.get_attribute('class') and color_num == 1:
+                        old_color_num = color_num
 
-                    new_color_id = i.get_attribute('id')
+                        # 點開圖片
+                        WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
+                            (By.XPATH, "//div[@class='relative w-full h-full']"))).click()
+                        time.sleep(1)
+                        # wait loading
+                        WebDriverWait(self.driver, 10).until(EC.invisibility_of_element_located(
+                            (By.XPATH, "//div[@class='PhotoView__PhotoWrap']"
+                                       "//img[@class='PhotoView__Photo' and contains(@src, 'data:image/svg')]")))
 
-                    if i.get_attribute('class') != 'active':
-                        print(f"Fail:「{new_color_id}」切換顏色失敗")
-                        result_list.append("False")
+                        # 擷取當下畫面
+                        old_canvas_base64 = self.driver.get_screenshot_as_base64()
+                        old_canvas_png = base64.b64decode(old_canvas_base64)
+                        old_image = cv2.imdecode(np.frombuffer(old_canvas_png, np.uint8), 1)
+
+                        old_img_src = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
+                            (By.XPATH, "//img[@class='PhotoView__Photo' "
+                                       "and contains(@src, 'blob:http')]"))).get_attribute('src')
+
+                        WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
+                            (By.XPATH, "//*[name()='svg' and @viewBox='0 0 768 768']"))).click()
+
                         continue
                     else:
-                        img_src = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
-                            (By.XPATH, "//div[@class='product-images-wrap']"
-                                       "//img[@class='fluid-img__img']"))).get_attribute('src')
+                        WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
+                            (By.XPATH, "//div[@class='w-24']//*[name()='svg']"))).click()
+                        time.sleep(1)
+                        i.click()
+                        time.sleep(1)
 
-                        if img_src == old_img_src:
-                            print(f"Fail:「{new_color_id}」切換網址無變化")
-                            print(f"「{old_color_id}」網址:{old_img_src}")
-                            print(f"「{new_color_id}」網址:{img_src}")
+                        if ' before:opacity-100 ' not in i.get_attribute('class'):
+                            print(f"Fail:「第{color_num}個」切換顏色失敗")
                             result_list.append("False")
                             continue
                         else:
+                            # 點開圖片
+                            WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
+                                (By.XPATH, "//div[@class='relative w-full h-full']"))).click()
+                            time.sleep(1)
+                            # wait loading
+                            WebDriverWait(self.driver, 10).until(EC.invisibility_of_element_located(
+                                (By.XPATH, "//div[@class='PhotoView__PhotoWrap']"
+                                           "//img[@class='PhotoView__Photo' and contains(@src, 'data:image/svg')]")))
+                            img_src = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
+                                (By.XPATH, "//img[@class='PhotoView__Photo' "
+                                           "and contains(@src, 'blob:http')]"))).get_attribute('src')
+
+                            if img_src == old_img_src:
+                                print(f"Fail:「第{color_num}個」切換網址無變化")
+                                print(f"「第{old_color_num}個」網址:{old_img_src}")
+                                print(f"「第{color_num}個」網址:{img_src}")
+                                result_list.append("False")
+                                continue
+
                             # 比對圖片
-
-                            if not isinstance(old_image, np.ndarray):
-                                # 新分頁，開舊圖片
-                                new_window = f"window.open('{old_img_src}');"
-                                self.driver.execute_script(new_window)
-                                time.sleep(2)
-
-                                handles = self.driver.window_handles
-                                for w in handles:
-                                    if w not in all_handles:
-                                        self.driver.switch_to.window(w)
-
-                                # 擷取當下畫面
-                                old_canvas_base64 = self.driver.get_screenshot_as_base64()
-                                old_canvas_png = base64.b64decode(old_canvas_base64)
-                                old_image = cv2.imdecode(np.frombuffer(old_canvas_png, np.uint8), 1)
-
-                                self.driver.close()
-                                self.driver.switch_to.window(current_id)
-
-                            # 新分頁，開新圖片
-                            new_window = f"window.open('{img_src}');"
-                            self.driver.execute_script(new_window)
-                            time.sleep(2)
-
-                            handles = self.driver.window_handles
-                            for w in handles:
-                                if w not in all_handles:
-                                    self.driver.switch_to.window(w)
-
                             # 擷取當下畫面
                             canvas_base64 = self.driver.get_screenshot_as_base64()
                             canvas_png = base64.b64decode(canvas_base64)
@@ -386,17 +373,17 @@ class AutomationTest(unittest.TestCase):
                             _, max_v, _, _ = cv2.minMaxLoc(res)
 
                             if max_v == 1:
-                                print(f"Fail:「{new_color_id}」圖片無變化")
-                                print(f"「{old_color_id}」圖片網址:{old_img_src}")
-                                print(f"「{new_color_id}」圖片網址:{img_src}")
+                                print(f"Fail:「第{color_num}個」圖片無變化")
+                                print(f"「第{old_color_num}個」圖片網址:{old_img_src}")
+                                print(f"「第{color_num}個」圖片網址:{img_src}")
                                 result_list.append("False")
                             else:
-                                old_color_id = new_color_id
+                                old_color_num = color_num
                                 old_img_src = img_src
                                 old_image = target
 
-                            self.driver.close()
-                            self.driver.switch_to.window(current_id)
+                            WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
+                                (By.XPATH, "//*[name()='svg' and @viewBox='0 0 768 768']"))).click()
             except:
                 print("Fail: 測試「裝置顏色」失敗")
                 result_list.append("False")
@@ -406,138 +393,111 @@ class AutomationTest(unittest.TestCase):
             # 手機殼顏色
             try:
                 old_color_name = None
-                old_color_id = None
                 old_img_src = None
                 old_image = None
+                new_color_name = None
 
-                # 確認是否單一版本
-                try:
-                    WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
-                        (By.XPATH, "//span[text()='版本']")))
-                    only_one_type = False
-                except:
-                    only_one_type = True
+                type_list = WebDriverWait(self.driver, 10).until(EC.presence_of_all_elements_located(
+                    (By.XPATH, "//div[./p[text()='產品類型']]/following-sibling::div/div")))
 
-                if not only_one_type:
-                    # 確認版本有無展開
-                    _ele = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
-                        (By.XPATH, "//div[@class='product-form__content__options selectors types-selectors']/div")))
-                    if 'active' not in _ele.get_attribute('class'):
-                        _ele.click()
+                for i in type_list:
+                    if 'shadow-md' not in i.get_attribute('class'):
+                        i.click()
                         time.sleep(1)
 
-                    type_list = WebDriverWait(self.driver, 10).until(EC.presence_of_all_elements_located(
-                        (By.XPATH, "//div[@class='drop-folder__slot-wrapper']//div[./p]")))
-                    for i in type_list:
-                        if 'active' not in i.get_attribute('class'):
-                            i.click()
+                    _ele = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
+                        (By.XPATH, "//p[text()='顏色']/following-sibling::p")))
+
+                    # 取得所有顏色
+                    color_list = WebDriverWait(self.driver, 10).until(EC.presence_of_all_elements_located(
+                        (By.XPATH, "//div[./p[text()='顏色']]/../following-sibling::ul//span")))
+                    for index, color in enumerate(color_list):
+                        color_num = index + 1
+                        color.click()
+
+                        if color_num == 1:
+                            old_color_num = color_num
+                            old_color_name = _ele.text
+
+                            # 點開圖片
+                            WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
+                                (By.XPATH, "//div[@class='relative w-full h-full']"))).click()
                             time.sleep(1)
-
-                        # 確認手機殼顏色有無展開
-                        _ele = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
-                            (By.XPATH, "//div[@class='product-form__content__options"
-                                       " selectors case-color-selectors']/div")))
-                        if 'active' not in _ele.get_attribute('class'):
-                            _ele.click()
-                            time.sleep(1)
-
-                        # 取得所有顏色
-                        color_list = WebDriverWait(self.driver, 10).until(EC.presence_of_all_elements_located(
-                            (By.XPATH, "//div[@class='drop-folder__slot-wrapper']//div[@id='color-picker']/ul/li")))
-                        for color in color_list:
-                            if i.get_attribute('class') == 'active':
-                                old_color_name = _ele.text.split(' ')[-1]
-                                old_color_id = color.get_attribute('id')
-                                old_img_src = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
-                                    (By.XPATH, "//div[@class='product-images-wrap']"
-                                               "//img[@class='fluid-img__img']"))).get_attribute('src')
-                                continue
-
-                            color.click()
                             # wait loading
                             WebDriverWait(self.driver, 10).until(EC.invisibility_of_element_located(
-                                (By.XPATH, "//div[@class='loading__mask loading__mask__show']"
-                                           "/div[@class='loading__indicator']")))
+                                (By.XPATH, "//div[@class='PhotoView__PhotoWrap']"
+                                           "//img[@class='PhotoView__Photo' and contains(@src, 'data:image/svg')]")))
 
-                            new_color_name = _ele.text.split(' ')[-1]
+                            # 擷取當下畫面
+                            old_canvas_base64 = self.driver.get_screenshot_as_base64()
+                            old_canvas_png = base64.b64decode(old_canvas_base64)
+                            old_image = cv2.imdecode(np.frombuffer(old_canvas_png, np.uint8), 1)
+
+                            old_img_src = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
+                                (By.XPATH, "//img[@class='PhotoView__Photo' "
+                                           "and contains(@src, 'blob:http')]"))).get_attribute('src')
+
+                            WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
+                                (By.XPATH, "//*[name()='svg' and @viewBox='0 0 768 768']"))).click()
+
+                            continue
+                        else:
+                            new_color_name = _ele.text
                             global color_name
                             color_name = new_color_name
-                            new_color_id = color.get_attribute('id')
 
-                            if 'active' not in i.get_attribute('class'):
-                                print(f"Fail:「{new_color_id}」切換顏色失敗")
+                            if ' before:opacity-100 ' not in color.get_attribute('class'):
+                                print(f"Fail:「第{color_num}個」切換顏色失敗")
+                                result_list.append("False")
+                                continue
+                            elif new_color_name == old_color_name:
+                                print(f"Fail:「第{color_num}個」切換後顏色名稱無變化")
+                                print(f"「第{old_color_num}個」舊名稱:{old_color_name}")
+                                print(f"「第{color_num}個」新名稱:{new_color_name}")
                                 result_list.append("False")
                                 continue
                             else:
-                                img_src = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
-                                    (By.XPATH, "//div[@class='product-images-wrap']"
-                                               "//img[@class='fluid-img__img']"))).get_attribute('src')
+                                # 點開圖片
+                                WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
+                                    (By.XPATH, "//div[@class='relative w-full h-full']"))).click()
+                                time.sleep(1)
+                                # wait loading
+                                WebDriverWait(self.driver, 10).until(EC.invisibility_of_element_located(
+                                    (By.XPATH, "//div[@class='PhotoView__PhotoWrap']"
+                                               "//img[@class='PhotoView__Photo' and contains(@src, 'data:image/svg')]")))
+                                img_src = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
+                                    (By.XPATH, "//img[@class='PhotoView__Photo' "
+                                               "and contains(@src, 'blob:http')]"))).get_attribute('src')
 
                                 if img_src == old_img_src:
-                                    print(f"Fail:「{new_color_id}」切換後網址無變化")
-                                    print(f"「{old_color_id}」舊網址:{old_img_src}")
-                                    print(f"「{new_color_id}」新網址:{img_src}")
+                                    print(f"Fail:「第{color_num}個」切換網址無變化")
+                                    print(f"「第{old_color_num}個」網址:{old_img_src}")
+                                    print(f"「第{color_num}個」網址:{img_src}")
                                     result_list.append("False")
                                     continue
-                                elif new_color_name == old_color_name:
-                                    print(f"Fail:「{new_color_id}」切換後顏色名稱無變化")
-                                    print(f"「{old_color_id}」舊名稱:{old_color_name}")
-                                    print(f"「{new_color_id}」新名稱:{new_color_name}")
+
+                                # 比對圖片
+                                # 擷取當下畫面
+                                canvas_base64 = self.driver.get_screenshot_as_base64()
+                                canvas_png = base64.b64decode(canvas_base64)
+                                target = cv2.imdecode(np.frombuffer(canvas_png, np.uint8), 1)
+
+                                res = cv2.matchTemplate(old_image, target, cv2.TM_CCOEFF_NORMED)
+                                _, max_v, _, _ = cv2.minMaxLoc(res)
+
+                                if max_v == 1:
+                                    print(f"Fail:「第{color_num}個」圖片無變化")
+                                    print(f"「第{old_color_num}個」圖片網址:{old_img_src}")
+                                    print(f"「第{color_num}個」圖片網址:{img_src}")
                                     result_list.append("False")
-                                    continue
                                 else:
-                                    # 比對圖片
+                                    old_color_num = color_num
+                                    old_img_src = img_src
+                                    old_image = target
 
-                                    if not isinstance(old_image, np.ndarray):
-                                        # 新分頁，開舊圖片
-                                        new_window = f"window.open('{old_img_src}');"
-                                        self.driver.execute_script(new_window)
-                                        time.sleep(2)
+                                WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
+                                    (By.XPATH, "//*[name()='svg' and @viewBox='0 0 768 768']"))).click()
 
-                                        handles = self.driver.window_handles
-                                        for w in handles:
-                                            if w not in all_handles:
-                                                self.driver.switch_to.window(w)
-
-                                        # 擷取當下畫面
-                                        old_canvas_base64 = self.driver.get_screenshot_as_base64()
-                                        old_canvas_png = base64.b64decode(old_canvas_base64)
-                                        old_image = cv2.imdecode(np.frombuffer(old_canvas_png, np.uint8), 1)
-
-                                        self.driver.close()
-                                        self.driver.switch_to.window(current_id)
-
-                                    # 新分頁，開新圖片
-                                    new_window = f"window.open('{img_src}');"
-                                    self.driver.execute_script(new_window)
-                                    time.sleep(2)
-
-                                    handles = self.driver.window_handles
-                                    for w in handles:
-                                        if w not in all_handles:
-                                            self.driver.switch_to.window(w)
-
-                                    # 擷取當下畫面
-                                    canvas_base64 = self.driver.get_screenshot_as_base64()
-                                    canvas_png = base64.b64decode(canvas_base64)
-                                    target = cv2.imdecode(np.frombuffer(canvas_png, np.uint8), 1)
-
-                                    res = cv2.matchTemplate(old_image, target, cv2.TM_CCOEFF_NORMED)
-                                    _, max_v, _, _ = cv2.minMaxLoc(res)
-
-                                    if max_v == 1:
-                                        print(f"Fail:「{new_color_id}」圖片無變化")
-                                        print(f"「{old_color_id}」圖片網址:{old_img_src}")
-                                        print(f"「{new_color_id}」圖片網址:{img_src}")
-                                        result_list.append("False")
-                                    else:
-                                        old_color_name = new_color_name
-                                        old_color_id = new_color_id
-                                        old_img_src = img_src
-                                        old_image = target
-
-                                    self.driver.close()
-                                    self.driver.switch_to.window(current_id)
             except:
                 print("Fail: 測試「手機殼顏色」失敗 ")
                 result_list.append("False")
