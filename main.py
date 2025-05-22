@@ -14,8 +14,6 @@ import cv2
 import base64
 import numpy as np
 import HTMLTestRunner
-from selenium.webdriver.chrome.service import Service as ChromeService
-from webdriver_manager.chrome import ChromeDriverManager
 color_name = None
 
 
@@ -27,7 +25,12 @@ class AutomationTest(unittest.TestCase):
         sys.path.append(os.path.abspath(os.path.join(os.getcwd(), "..")))
         options = webdriver.ChromeOptions()
         options.add_experimental_option('excludeSwitches', ['enable-automation'])
-        cls.driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
+        options.add_experimental_option("prefs", {
+            "profile.password_manager_enabled": False,
+            "credentials_enable_service": False,
+            "profile.password_manager_leak_detection": False
+        })
+        cls.driver = webdriver.Chrome(options=options)
         cls.driver.maximize_window()
         cls.driver.get("https://rhinoshield.tw/")
         # 同意cookie
@@ -205,7 +208,9 @@ class AutomationTest(unittest.TestCase):
             input_search = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
                 (By.XPATH, "//input[@type='search']")))
             input_search.send_keys("qwe")
-            input_search.send_keys(Keys.ENTER)
+            search_button = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
+                (By.XPATH, "//button[./span[text()='搜尋']]")))
+            search_button.click()
             time.sleep(1)
             search_msg_ele = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
                 (By.XPATH, "//h1[text()='犀牛盾設計展間']/following-sibling::p")))
@@ -214,9 +219,10 @@ class AutomationTest(unittest.TestCase):
                 result_list.append("False")
 
             input_search.clear()
+            input_search.clear()
             time.sleep(1)
             input_search.send_keys("Naruto")
-            input_search.send_keys(Keys.ENTER)
+            search_button.click()
             time.sleep(1)
             WebDriverWait(self.driver, 10).until(EC.invisibility_of_element_located(
                 (By.XPATH, "//p[text()='抱歉，無搜尋結果 ']")))
@@ -235,17 +241,13 @@ class AutomationTest(unittest.TestCase):
             # 點選商品
             try:
                 # 取第一筆資訊
-                search_ele = WebDriverWait(self.driver, 10).until(EC.presence_of_all_elements_located(
-                    (By.XPATH, "//div[@data-tour-id='search-results']/div[1]//p[not(span)]")))
-                for i in search_ele:
-                    if '/' in i.text:
-                        search_page_data.append(i.text.replace(' /', ''))
-                    else:
-                        search_page_data.append(i.text)
+                search_text = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
+                    (By.XPATH, "//div[@data-tour-id='search-results']/a[1]//div[@class='search-result--card__content']"))).text
+                search_page_data = search_text.split("\n")
 
                 # 點擊第一筆
                 WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
-                    (By.XPATH, "//div[@data-tour-id='search-results']/div[1]"))).click()
+                    (By.XPATH, "//div[@data-tour-id='search-results']/a[1]"))).click()
                 time.sleep(1)
                 handles = self.driver.window_handles
                 self.driver.switch_to.window(handles[-1])
@@ -257,7 +259,7 @@ class AutomationTest(unittest.TestCase):
                     (By.XPATH, "//div[@class='flex w-full bg-black']//*[name()='svg' and @viewBox='0 0 24 24']"))).click()
 
                 # 判斷跳轉後的商品資訊是否正確
-                print("======= 測試「驗證 - 系列/型號/產品 資訊」=======")
+                print("======= 測試「驗證 - 系列/金額 資訊」=======")
                 try:
                     # 系列
                     product_series = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
@@ -268,19 +270,14 @@ class AutomationTest(unittest.TestCase):
                         result_list.append("False")
                         product_page = False
 
-                    # 型號
-                    device = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
-                        (By.XPATH, "//p[text()='選擇型號']/following-sibling::p"))).text
-                    if device not in search_page_data:
-                        print(f"Fail:「型號」顯示有誤:{device}")
-                        print(f"搜尋頁面資訊:{search_page_data}")
-                        result_list.append("False")
-
-                    # 產品
-                    product = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
-                        (By.XPATH, "//p[text()='選擇產品']/following-sibling::p"))).text
-                    if product not in search_page_data:
-                        print(f"Fail:「產品」顯示有誤:{product}")
+                    # 系列/金額
+                    footer_text = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
+                        (By.XPATH, "//div[contains(@class, 'items-center') and contains(@class, 'py-3')]"))).text
+                    product_series_and_cost = footer_text.split("\n")
+                    product_series_and_cost.pop(2)
+                    diff = list(set(search_page_data).symmetric_difference(set(product_series_and_cost)))
+                    if diff:
+                        print(f"Fail:「系列/金額」顯示有誤:{product_series_and_cost}")
                         print(f"搜尋頁面資訊:{search_page_data}")
                         result_list.append("False")
                 except:
@@ -301,13 +298,24 @@ class AutomationTest(unittest.TestCase):
             print("======= 測試「裝置顏色」=======")
             # 裝置顏色(手機顏色)
             try:
-                phone_color_list = WebDriverWait(self.driver, 10).until(EC.presence_of_all_elements_located(
-                    (By.XPATH, "//div[@class='absolute top-[calc(100%+9px)] left-0 z-dropdown py-4 px-8 bg-gray-10 "
-                               "rounded-1 cursor-default shadow-md']//span")))
+                # 當前手機型號
+                phone_type_text = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
+                    (By.XPATH, "//div[@class='relative h-full']//p"))).text
+                print(f"---- 當前手機型號「{phone_type_text}」-----")
 
+                phone_color_button = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
+                    (By.XPATH, "//div[@class='w-18']")))
+                phone_color_button.click()
+                time.sleep(1)
+                phone_color_list = WebDriverWait(self.driver, 10).until(EC.visibility_of_any_elements_located(
+                    (By.XPATH, "//div[@class='w-18']//li/span")))
                 for index, i in enumerate(phone_color_list):
                     color_num = index + 1
                     if ' before:opacity-100 ' in i.get_attribute('class') and color_num == 1:
+                        # 關閉下拉選單
+                        phone_color_button.click()
+                        time.sleep(1)
+
                         old_color_num = color_num
 
                         # 點開圖片
@@ -333,8 +341,7 @@ class AutomationTest(unittest.TestCase):
 
                         continue
                     else:
-                        WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
-                            (By.XPATH, "//div[@class='w-24']//*[name()='svg']"))).click()
+                        phone_color_button.click()
                         time.sleep(1)
                         i.click()
                         time.sleep(1)
@@ -397,28 +404,63 @@ class AutomationTest(unittest.TestCase):
                 old_image = None
                 new_color_name = None
 
-                type_list = WebDriverWait(self.driver, 10).until(EC.presence_of_all_elements_located(
-                    (By.XPATH, "//div[./p[text()='產品類型']]/following-sibling::div/div")))
+                # 手機殼產品
+                phone_case_text = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
+                    (By.XPATH, "//p[text()='選擇產品']/following-sibling::p"))).text
+                print(f"---- 當前手機殼產品「{phone_case_text}」-----")
 
-                for i in type_list:
-                    if 'shadow-md' not in i.get_attribute('class'):
-                        i.click()
+                color_ele = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
+                    (By.XPATH, "//p[text()='顏色']/following-sibling::p")))
+
+                # 取得所有顏色
+                color_list = WebDriverWait(self.driver, 10).until(EC.presence_of_all_elements_located(
+                    (By.XPATH, "//div[./p[text()='顏色']]/../following-sibling::ul//span")))
+                for index, color in enumerate(color_list):
+                    color_num = index + 1
+                    color.click()
+
+                    if color_num == 1:
+                        old_color_num = color_num
+                        old_color_name = color_ele.text
+
+                        # 點開圖片
+                        WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
+                            (By.XPATH, "//div[@class='relative w-full h-full']"))).click()
                         time.sleep(1)
+                        # wait loading
+                        WebDriverWait(self.driver, 10).until(EC.invisibility_of_element_located(
+                            (By.XPATH, "//div[@class='PhotoView__PhotoWrap']"
+                                       "//img[@class='PhotoView__Photo' and contains(@src, 'data:image/svg')]")))
 
-                    _ele = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
-                        (By.XPATH, "//p[text()='顏色']/following-sibling::p")))
+                        # 擷取當下畫面
+                        old_canvas_base64 = self.driver.get_screenshot_as_base64()
+                        old_canvas_png = base64.b64decode(old_canvas_base64)
+                        old_image = cv2.imdecode(np.frombuffer(old_canvas_png, np.uint8), 1)
 
-                    # 取得所有顏色
-                    color_list = WebDriverWait(self.driver, 10).until(EC.presence_of_all_elements_located(
-                        (By.XPATH, "//div[./p[text()='顏色']]/../following-sibling::ul//span")))
-                    for index, color in enumerate(color_list):
-                        color_num = index + 1
-                        color.click()
+                        old_img_src = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
+                            (By.XPATH, "//img[@class='PhotoView__Photo' "
+                                       "and contains(@src, 'blob:http')]"))).get_attribute('src')
 
-                        if color_num == 1:
-                            old_color_num = color_num
-                            old_color_name = _ele.text
+                        WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
+                            (By.XPATH, "//*[name()='svg' and @viewBox='0 0 768 768']"))).click()
 
+                        continue
+                    else:
+                        new_color_name = color_ele.text
+                        global color_name
+                        color_name = new_color_name
+
+                        if ' before:opacity-100 ' not in color.get_attribute('class'):
+                            print(f"Fail:「第{color_num}個」切換顏色失敗")
+                            result_list.append("False")
+                            continue
+                        elif new_color_name == old_color_name:
+                            print(f"Fail:「第{color_num}個」切換後顏色名稱無變化")
+                            print(f"「第{old_color_num}個」舊名稱:{old_color_name}")
+                            print(f"「第{color_num}個」新名稱:{new_color_name}")
+                            result_list.append("False")
+                            continue
+                        else:
                             # 點開圖片
                             WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
                                 (By.XPATH, "//div[@class='relative w-full h-full']"))).click()
@@ -427,76 +469,38 @@ class AutomationTest(unittest.TestCase):
                             WebDriverWait(self.driver, 10).until(EC.invisibility_of_element_located(
                                 (By.XPATH, "//div[@class='PhotoView__PhotoWrap']"
                                            "//img[@class='PhotoView__Photo' and contains(@src, 'data:image/svg')]")))
-
-                            # 擷取當下畫面
-                            old_canvas_base64 = self.driver.get_screenshot_as_base64()
-                            old_canvas_png = base64.b64decode(old_canvas_base64)
-                            old_image = cv2.imdecode(np.frombuffer(old_canvas_png, np.uint8), 1)
-
-                            old_img_src = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
+                            img_src = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
                                 (By.XPATH, "//img[@class='PhotoView__Photo' "
                                            "and contains(@src, 'blob:http')]"))).get_attribute('src')
 
+                            if img_src == old_img_src:
+                                print(f"Fail:「第{color_num}個」切換網址無變化")
+                                print(f"「第{old_color_num}個」網址:{old_img_src}")
+                                print(f"「第{color_num}個」網址:{img_src}")
+                                result_list.append("False")
+                                continue
+
+                            # 比對圖片
+                            # 擷取當下畫面
+                            canvas_base64 = self.driver.get_screenshot_as_base64()
+                            canvas_png = base64.b64decode(canvas_base64)
+                            target = cv2.imdecode(np.frombuffer(canvas_png, np.uint8), 1)
+
+                            res = cv2.matchTemplate(old_image, target, cv2.TM_CCOEFF_NORMED)
+                            _, max_v, _, _ = cv2.minMaxLoc(res)
+
+                            if max_v == 1:
+                                print(f"Fail:「第{color_num}個」圖片無變化")
+                                print(f"「第{old_color_num}個」圖片網址:{old_img_src}")
+                                print(f"「第{color_num}個」圖片網址:{img_src}")
+                                result_list.append("False")
+                            else:
+                                old_color_num = color_num
+                                old_img_src = img_src
+                                old_image = target
+
                             WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
                                 (By.XPATH, "//*[name()='svg' and @viewBox='0 0 768 768']"))).click()
-
-                            continue
-                        else:
-                            new_color_name = _ele.text
-                            global color_name
-                            color_name = new_color_name
-
-                            if ' before:opacity-100 ' not in color.get_attribute('class'):
-                                print(f"Fail:「第{color_num}個」切換顏色失敗")
-                                result_list.append("False")
-                                continue
-                            elif new_color_name == old_color_name:
-                                print(f"Fail:「第{color_num}個」切換後顏色名稱無變化")
-                                print(f"「第{old_color_num}個」舊名稱:{old_color_name}")
-                                print(f"「第{color_num}個」新名稱:{new_color_name}")
-                                result_list.append("False")
-                                continue
-                            else:
-                                # 點開圖片
-                                WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
-                                    (By.XPATH, "//div[@class='relative w-full h-full']"))).click()
-                                time.sleep(1)
-                                # wait loading
-                                WebDriverWait(self.driver, 10).until(EC.invisibility_of_element_located(
-                                    (By.XPATH, "//div[@class='PhotoView__PhotoWrap']"
-                                               "//img[@class='PhotoView__Photo' and contains(@src, 'data:image/svg')]")))
-                                img_src = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
-                                    (By.XPATH, "//img[@class='PhotoView__Photo' "
-                                               "and contains(@src, 'blob:http')]"))).get_attribute('src')
-
-                                if img_src == old_img_src:
-                                    print(f"Fail:「第{color_num}個」切換網址無變化")
-                                    print(f"「第{old_color_num}個」網址:{old_img_src}")
-                                    print(f"「第{color_num}個」網址:{img_src}")
-                                    result_list.append("False")
-                                    continue
-
-                                # 比對圖片
-                                # 擷取當下畫面
-                                canvas_base64 = self.driver.get_screenshot_as_base64()
-                                canvas_png = base64.b64decode(canvas_base64)
-                                target = cv2.imdecode(np.frombuffer(canvas_png, np.uint8), 1)
-
-                                res = cv2.matchTemplate(old_image, target, cv2.TM_CCOEFF_NORMED)
-                                _, max_v, _, _ = cv2.minMaxLoc(res)
-
-                                if max_v == 1:
-                                    print(f"Fail:「第{color_num}個」圖片無變化")
-                                    print(f"「第{old_color_num}個」圖片網址:{old_img_src}")
-                                    print(f"「第{color_num}個」圖片網址:{img_src}")
-                                    result_list.append("False")
-                                else:
-                                    old_color_num = color_num
-                                    old_img_src = img_src
-                                    old_image = target
-
-                                WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
-                                    (By.XPATH, "//*[name()='svg' and @viewBox='0 0 768 768']"))).click()
 
             except:
                 print("Fail: 測試「手機殼顏色」失敗 ")
@@ -512,26 +516,41 @@ class AutomationTest(unittest.TestCase):
         # init
         result_list = []
         add_car = True
-        title = None
         sub_title = None
-        price = None
+        product_style = None
+        product_type = None
+        # price = None
+        phone_price_list = None
 
         print("\n======= 測試「加入購物車」=======")
         # 加入購物車
         try:
             # 取商品資訊
-            title = WebDriverWait(self.driver, 20).until(EC.visibility_of_element_located(
-                (By.XPATH, "//div[@id='caseProduct']//h2[@class='product-form__content__title']"))).text
             sub_title = WebDriverWait(self.driver, 20).until(EC.visibility_of_element_located(
-                (By.XPATH, "//div[@id='caseProduct']//p[@class='product-form__content__subtitle']"))).text
-            price = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
-                (By.XPATH, "//div[@id='caseProduct']//span[@class='total-price']"))).text
+                (By.XPATH, "//div[./h1]/following-sibling::a"))).text
+            # 產品樣式
+            product_style = WebDriverWait(self.driver, 20).until(EC.visibility_of_element_located(
+                (By.XPATH, "//p[text()='樣式']/following-sibling::p"))).text
+            # 產品類型
+            product_type = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
+                (By.XPATH, "//p[text()='產品類型']/following-sibling::p"))).text
+            # 價錢
+            phone_price_text = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located(
+                (By.XPATH, "//div[contains(@class, 'items-center') and contains(@class, 'py-3')]//div[./p]"))).text
+            phone_price_list = phone_price_text.split("\n")
             WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
-                (By.XPATH, "//button[@class='add-to-cart-btn available']"))).click()
+                (By.XPATH, "//button/span[text()='加入購物車']"))).click()
+
+            # 判斷是否加入成功
+            alert_msg = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
+                (By.XPATH, "//p[text()='成功加入購物車！']")))
+            if not alert_msg:
+                print("Fail: 「加入購物車」無顯示提示訊息")
+                result_list.append("False")
 
             # 加購頁面
             WebDriverWait(self.driver, 20).until(EC.visibility_of_element_located(
-                (By.XPATH, "//div[@data-title='保護貼']")))
+                (By.XPATH, "//div[@data-title='手機保護貼']")))
             time.sleep(1)
 
             # 驗證數量
@@ -540,21 +559,6 @@ class AutomationTest(unittest.TestCase):
             car_num = car.find_element(By.XPATH, "./a//span").text
             if "1" not in car_num:
                 print(f"Fail: 「購物車-數量」顯示錯誤: {car_num}")
-                result_list.append("False")
-
-            # 移至購物車圖示判斷顯示商品
-            ActionChains(self.driver).move_to_element(car).perform()
-            time.sleep(1)
-            car_product = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
-                (By.XPATH, "//p[text()='購物車']/following-sibling::div/div[./a]"))).text
-
-            _check = [i for i in [title, sub_title, price, 'x 1'] if i not in car_product]
-            if len(_check) != 0:
-                print("Fail:「購物車-商品有誤」")
-                print(f"「購物車-商品內容」: {car_product}")
-                print(f"「商品頁-大標題」:{title}")
-                print(f"「商品頁-副標題」:{sub_title}")
-                print(f"「商品頁-價錢」:{price}")
                 result_list.append("False")
         except:
             print("Fail: 測試「加入購物車」失敗")
@@ -567,11 +571,12 @@ class AutomationTest(unittest.TestCase):
             # 進入購物車頁面
             try:
                 WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
-                    (By.XPATH, "//button[text()='查看購物車']"))).click()
+                    (By.XPATH, "//button/span[text()='查看購物車']"))).click()
                 time.sleep(1)
                 # wait loading
                 WebDriverWait(self.driver, 10).until_not(EC.presence_of_element_located(
                     (By.XPATH, "//div[@class='loading__mask loading__mask__show']")))
+                time.sleep(1)
                 # 判斷購物車是否有商品
                 try:
                     ele = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
@@ -596,18 +601,25 @@ class AutomationTest(unittest.TestCase):
                                 if '\n' in product.text:
                                     _text = product.text.split('\n')
                                     for _ in _text:
-                                        car_product.append(_)
+                                        if '/' in _:
+                                            new_text = _.split(' / ')
+                                            for _new in new_text:
+                                                car_product.append(_new)
+                                        else:
+                                            car_product.append(_)
                                 else:
                                     car_product.append(product.text)
 
-                        check1 = len([i for i in [title, sub_title] if i not in car_product[0]])
-                        check2 = len([i for i in [color_name, price, '1'] if i not in car_product])
-                        if (check1 or check2) != 0:
+                        check1 = len([i for i in [sub_title, color_name, '1'] if i not in car_product])
+                        check2 = len([i for i in [product_style, product_type] if i not in car_product[1]])
+                        check3 = len([i for i in phone_price_list if i not in car_product])
+                        if (check1 or check2 or check3) != 0:
                             print(f"Fail:「購物車頁面-商品」顯示錯誤")
                             print(f"「購物車頁面-商品」: {car_product}")
-                            print(f"「商品頁-大標題」:{title}")
+                            print(f"「商品頁-樣式」:{product_style}")
+                            print(f"「商品頁-類型」:{product_type}")
                             print(f"「商品頁-副標題」:{sub_title}")
-                            print(f"「商品頁-價錢」:{price}")
+                            print(f"「商品頁-價錢」:{phone_price_list}")
                             print(f"「商品頁-顏色」:{color_name}")
                             result_list.append("False")
                     except:
@@ -629,6 +641,7 @@ class AutomationTest(unittest.TestCase):
                             "合計": "",
                             "商品金額": "",
                             "運費小計": "",
+                            "總共省下": "",
                             "應付金額": "",
                         }
 
@@ -639,7 +652,7 @@ class AutomationTest(unittest.TestCase):
                                 price_dict['合計'] = "".join(filter(lambda x: x in '0123456789', ele.text))
                             else:
                                 ele = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
-                                    (By.XPATH, f"//p[text()='{i}']/..//p[@class='total__wrap__price']")))
+                                    (By.XPATH, f"//p[text()='{i}']/following-sibling::p")))
                                 price_dict[i] = "".join(filter(lambda x: x in '0123456789', ele.text))
 
                         # 數量
@@ -647,7 +660,7 @@ class AutomationTest(unittest.TestCase):
                             (By.XPATH, "//div[@class='td qty']//input"))).get_attribute("value")
 
                         # 金額
-                        price = "".join(filter(lambda x: x in '0123456789', price))
+                        price = "".join(filter(lambda x: x in '0123456789', phone_price_list[0]))
 
                         # 驗證金額
                         if int(price) * int(qty) != int(price_dict['合計']):
@@ -656,18 +669,21 @@ class AutomationTest(unittest.TestCase):
                             print(f"「數量」: {qty}")
                             print(f"「合計金額」: {price_dict['合計']}")
                             result_list.append("False")
-                        elif int(price_dict['合計']) != int(price_dict['商品金額']):
-                            print("Fail: 「合計金額」與「商品金額」不同")
+                        elif int(price_dict['合計']) != (int(price_dict['商品金額']) - int(price_dict['總共省下'])):
+                            print("Fail: 「合計金額」與「商品金額 - 總共省下」不同")
                             print(f"「合計金額」: {price_dict['合計']}")
                             print(f"「商品金額」: {price_dict['商品金額']}")
+                            print(f"「總共省下」: {price_dict['總共省下']}")
                             result_list.append("False")
-                        elif int(price_dict['商品金額']) + int(price_dict['運費小計']) != int(price_dict['應付金額']):
-                            print("Fail:「商品金額 + 運費小計」與「應付金額」不同顯示異常")
+                        elif (int(price_dict['商品金額']) - int(price_dict['總共省下'])) + int(price_dict['運費小計']) != int(price_dict['應付金額']):
+                            print("Fail:「商品金額 - 總共省下 + 運費小計」與「應付金額」不同顯示異常")
                             print(f"「商品金額」: {price_dict['商品金額']}")
+                            print(f"「總共省下」: {price_dict['總共省下']}")
                             print(f"「運費小計」: {price_dict['運費小計']}")
                             print(f"「應付金額」: {price_dict['應付金額']}")
                             result_list.append("False")
                     except:
+                        print(traceback.format_exc())
                         print("Fail: 測試「金額」時失敗")
                         result_list.append("False")
                     print("*** 測試結束 ***\n")
@@ -677,6 +693,7 @@ class AutomationTest(unittest.TestCase):
                     try:
                         WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(
                             (By.XPATH, "//div[@class='td remove']"))).click()
+                        time.sleep(1)
                         # wait loading
                         WebDriverWait(self.driver, 10).until_not(EC.presence_of_element_located(
                             (By.XPATH, "//div[@class='loading__mask loading__mask__show']")))
