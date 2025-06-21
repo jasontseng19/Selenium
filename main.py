@@ -28,7 +28,9 @@ options.add_experimental_option("prefs", {
     "profile.password_manager_leak_detection": False
 })
 driver = webdriver.Chrome(options=options)
+print("視窗大小：", driver.get_window_size())
 driver.maximize_window()
+print("視窗大小2：", driver.get_window_size())
 driver.get("https://rhinoshield.tw/")
 # 同意cookie
 _ele = WebDriverWait(driver, 10).until(EC.element_to_be_clickable(
