@@ -49,6 +49,9 @@ jobs:
     - name: Show workspace
       run: echo "${{ github.workspace }}"
 
+    - name: 查看語系
+      run: locale
+
     - name: Run main.py
       run: |
         python3 main.py
