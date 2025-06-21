@@ -21,7 +21,12 @@ class RegisterPage(BasePage):
     i_know_button = "//button[text()='我知道了']"
 
     def test_to_register_page(self):
-        self.wait_until_element_is_clickable(self.account_icon).click()
+        try:
+            self.wait_until_element_is_clickable(self.account_icon).click()
+        except Exception as e:
+            self.driver.save_screenshot('page.png')  # 出錯時截圖
+            raise e
+        
         self.wait_until_element_is_clickable(self.register_button).click()
         page = self.wait_until_element_is_visibility(self.register_page)
         return True if page else False
