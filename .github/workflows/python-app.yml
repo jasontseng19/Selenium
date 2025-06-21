@@ -45,7 +45,7 @@ jobs:
         python3 main.py
 
     - name: Upload HTMLTestRunner report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: html-report
         path: '*.html'
