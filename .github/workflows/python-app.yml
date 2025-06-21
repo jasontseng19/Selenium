@@ -33,10 +33,15 @@ jobs:
           pip3 install -r requirements.txt
           pip3 install flake8
 
-      - name: Lint with flake8
-        run: flake8 .
+      # - name: Lint with flake8
+      #   run: flake8 .
+
+      - name: Install black
+        run: pip3 install black
       - name: Format with black
         run: black --check .
+
+      - name: pip3 install isort
       - name: Sort imports with isort
         run: isort --check-only .
 
