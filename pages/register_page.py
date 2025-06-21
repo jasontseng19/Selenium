@@ -21,12 +21,8 @@ class RegisterPage(BasePage):
     i_know_button = "//button[text()='我知道了']"
 
     def test_to_register_page(self):
-        try:
-            self.wait_until_element_is_clickable(self.account_icon).click()
-        except Exception as e:
-            self.driver.save_screenshot('page.png')  # 出錯時截圖
-            raise e
-        
+        print("\n======= 測試「進入註冊頁面」=======")
+        self.wait_until_element_is_clickable(self.account_icon).click()
         self.wait_until_element_is_clickable(self.register_button).click()
         page = self.wait_until_element_is_visibility(self.register_page)
         return True if page else False
@@ -44,11 +40,10 @@ class RegisterPage(BasePage):
         first_name.clear()
         first_name.send_keys("asd")
         self.wait_until_element_is_invisibility(self.first_name_error)
-        print("*** 測試結束 ***\n")
         return True
 
     def test_last_name_input(self):
-        print("======= 測試「姓名」=======")
+        print("\n======= 測試「姓名」=======")
         last_name = self.wait_until_element_is_clickable(self.last_name_input)
         last_name.send_keys("123")
         error_msg = self.wait_until_element_is_visibility(self.last_name_error).text
@@ -60,11 +55,10 @@ class RegisterPage(BasePage):
         last_name.clear()
         last_name.send_keys("asd")
         self.wait_until_element_is_invisibility(self.last_name_error)
-        print("*** 測試結束 ***\n")
         return True
 
     def test_email_input(self):
-        print("======= 測試「信箱」=======")
+        print("\n======= 測試「信箱」=======")
         email = self.wait_until_element_is_clickable(self.email_input)
         email.send_keys("123")
         error_msg = self.wait_until_element_is_visibility(self.email_error).text
@@ -76,11 +70,10 @@ class RegisterPage(BasePage):
         email.clear()
         email.send_keys("asd@asd.asd")
         self.wait_until_element_is_invisibility(self.email_error)
-        print("*** 測試結束 ***\n")
         return True
 
     def test_password_input(self):
-        print("======= 測試「密碼」=======")
+        print("\n======= 測試「密碼」=======")
         pwd = self.wait_until_element_is_clickable(self.pwd_input)
         pwd.send_keys("asd")
         error_msg = self.wait_until_element_is_visibility(self.pwd_error).text
@@ -92,11 +85,10 @@ class RegisterPage(BasePage):
         pwd.clear()
         pwd.send_keys("asdas")
         self.wait_until_element_is_invisibility(self.pwd_error)
-        print("*** 測試結束 ***\n")
         return True
 
     def test_finish(self):
-        print("======= 測試「點擊完成」=======")
+        print("\n======= 測試「點擊完成」=======")
         self.wait_until_element_is_clickable(self.finish_button).click()
         # 關閉認證popup
         button = self.wait_until_element_is_clickable(self.i_know_button)
