@@ -76,7 +76,7 @@ class ShoppingCarPage(BasePage):
                 print(f"Fail: 「購物車頁面」顯示錯誤訊息: {ele}")
                 result_list.append("False")
         except:
-            print("======= 測試「檢查購物車資訊」=======")
+            print("\n======= 測試「檢查購物車資訊」=======")
             try:
                 product_td = self.wait_until_all_elements_is_visibility(self.td)
                 car_product = []
@@ -113,9 +113,8 @@ class ShoppingCarPage(BasePage):
             except:
                 print("Fail: 檢查「購物車頁面-商品」時失敗")
                 result_list.append("False")
-            print("*** 測試結束 ***\n")
 
-            print("======= 測試「金額」=======")
+            print("\n======= 測試「金額」=======")
             # 測試金額
             try:
                 # 商品數+1
@@ -171,9 +170,8 @@ class ShoppingCarPage(BasePage):
             except:
                 print("Fail: 測試「金額」時失敗")
                 result_list.append("False")
-            print("*** 測試結束 ***\n")
 
-            print("======= 測試「清空購物車」=======")
+            print("\n======= 測試「清空購物車」=======")
             # 清空購物車
             try:
                 self.wait_until_element_is_clickable(self.remove).click()
@@ -187,7 +185,6 @@ class ShoppingCarPage(BasePage):
             except:
                 print("Fail: 測試「清空購物車」時失敗")
                 result_list.append("False")
-            print("*** 測試結束 ***\n")
 
         results = False if "False" in result_list else True
         return results
