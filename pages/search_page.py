@@ -67,10 +67,14 @@ class SearchPage(BasePage):
         self.wait_until_element_is_clickable(self.first_product).click()
         time.sleep(1)
         self.switch_to_tab(-1)
-        # 關閉上方廣告bar
-        self.wait_until_element_is_clickable(self.top_ad_close).click()
-        # 關閉右方廣告bar
-        self.wait_until_element_is_clickable(self.right_ad_close).click()
+        try:
+            # 關閉上方廣告bar
+            self.wait_until_element_is_clickable(self.top_ad_close).click()
+            # 關閉右方廣告bar
+            self.wait_until_element_is_clickable(self.right_ad_close).click()
+        except:
+            pass
+
         # 判斷跳轉後的商品資訊是否正確
         print("======= 測試「驗證 - 系列/金額 資訊」=======")
         # 系列
