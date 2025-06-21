@@ -29,7 +29,7 @@ options.add_experimental_option("prefs", {
 })
 driver = webdriver.Chrome(options=options)
 print("視窗大小：", driver.get_window_size())
-driver.maximize_window()
+# driver.maximize_window()
 print("視窗大小2：", driver.get_window_size())
 driver.get("https://rhinoshield.tw/")
 # 同意cookie
