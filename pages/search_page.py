@@ -33,6 +33,7 @@ class SearchPage(BasePage):
     phone_case_color_list = "//div[./p[text()='顏色']]/../following-sibling::ul//span"
 
     def test_search(self):
+        print("\n======= 測試「搜尋商品」=======")
         result_list = []
         self.wait_until_element_is_clickable(self.search_icon).click()
         input_search = self.wait_until_element_is_clickable(self.search_input)
@@ -76,7 +77,7 @@ class SearchPage(BasePage):
             pass
 
         # 判斷跳轉後的商品資訊是否正確
-        print("======= 測試「驗證 - 系列/金額 資訊」=======")
+        print("\n======= 測試「驗證 - 系列/金額 資訊」=======")
         # 系列
         product_series = self.wait_until_element_is_visibility(self.series).text
         if product_series not in search_page_data:
@@ -102,7 +103,7 @@ class SearchPage(BasePage):
         old_image = None
         result_list = []
 
-        print("======= 測試「裝置顏色」=======")
+        print("\n======= 測試「裝置顏色」=======")
         # 當前手機型號
         phone_type_text = self.wait_until_element_is_presence(self.phone_type).text
         print(f"---- 當前手機型號「{phone_type_text}」-----")
@@ -189,7 +190,7 @@ class SearchPage(BasePage):
         new_color_name = None
         result_list = []
 
-        print("======= 測試「手機殼顏色」=======")
+        print("\n======= 測試「手機殼顏色」=======")
         phone_case_text = self.wait_until_element_is_presence(self.phone_case).text
         print(f"---- 當前手機殼產品「{phone_case_text}」-----")
         phone_case_color_ele = self.wait_until_element_is_presence(self.phone_case_color)
