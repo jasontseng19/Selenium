@@ -98,17 +98,17 @@ if __name__ == '__main__':
     test_units = unittest.TestSuite()
     test_units.addTests([
         AutomationTest("test_register1"),
-        # AutomationTest("test_register2"),
-        # AutomationTest("test_register3"),
-        # AutomationTest("test_register4"),
-        # AutomationTest("test_register5"),
-        # AutomationTest("test_register6"),
-        # AutomationTest("test_search1"),
-        # AutomationTest("test_search2"),
-        # AutomationTest("test_search3"),
-        # AutomationTest("test_search4"),
-        # AutomationTest("test_shopping_car1"),
-        # AutomationTest("test_shopping_car2")
+        AutomationTest("test_register2"),
+        AutomationTest("test_register3"),
+        AutomationTest("test_register4"),
+        AutomationTest("test_register5"),
+        AutomationTest("test_register6"),
+        AutomationTest("test_search1"),
+        AutomationTest("test_search2"),
+        AutomationTest("test_search3"),
+        AutomationTest("test_search4"),
+        AutomationTest("test_shopping_car1"),
+        AutomationTest("test_shopping_car2")
     ])
 
     now = datetime.now().strftime('%m-%d %H_%M_%S')
