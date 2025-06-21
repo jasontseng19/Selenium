@@ -53,6 +53,14 @@ jobs:
       run: |
         python3 main.py
 
+    - name: 上傳 UI 截圖
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: selenium-screenshot
+        path: page.png
+        retention-days: 7
+
     - name: Upload HTMLTestRunner report
       uses: actions/upload-artifact@v4
       with:
