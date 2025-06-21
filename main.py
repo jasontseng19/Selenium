@@ -16,6 +16,9 @@ from pages import car_page
 
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(), "..")))
 options = webdriver.ChromeOptions()
+options.add_argument('--headless')
+options.add_argument('--no-sandbox')
+options.add_argument('--disable-dev-shm-usage')
 options.add_experimental_option('excludeSwitches', ['enable-automation'])
 options.add_experimental_option("prefs", {
     "profile.password_manager_enabled": False,
