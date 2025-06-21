@@ -59,8 +59,16 @@ jobs:
       #   run: |
       #     pytest
   
-      - name: 安裝繁體中文語系
-        run: sudo apt-get update && sudo apt-get install language-pack-zh-hant -y
+      - name: 檢查並安裝繁體中文語系（已安裝就跳過）
+        run: |
+          if locale -a | grep -q "zh_TW.utf8"; then
+            echo "zh_TW.utf8 已安裝，跳過安裝"
+          else
+            echo "安裝 zh_TW.utf8 語系"
+            sudo apt-get update
+            sudo apt-get install -y language-pack-zh-hant
+          fi
+
       - name: 查看語系
         run: locale
   
@@ -73,12 +81,8 @@ jobs:
       - name: Show workspace
         run: echo "${{ github.workspace }}"
   
-      - name: 查看語系
-        run: locale
-  
       - name: Run main.py
-        run: |
-          python3 main.py
+        run: python3 main.py
   
       - name: 上傳 UI 截圖
         if: always()
