@@ -41,7 +41,8 @@ jobs:
       - name: Format with black
         run: black --check .
 
-      - name: pip3 install isort
+      - name: Install isort
+        run: pip3 install isort
       - name: Sort imports with isort
         run: isort --check-only .
 
