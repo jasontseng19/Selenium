@@ -16,10 +16,10 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      LANG: zh_TW.UTF-8
-      LANGUAGE: zh_TW:zh
-      LC_ALL: zh_TW.UTF-8
+    # env:
+    #   LANG: zh_TW.UTF-8
+    #   LANGUAGE: zh_TW:zh
+    #   LC_ALL: zh_TW.UTF-8
 
     steps:      
       - uses: actions/checkout@v4
@@ -33,15 +33,18 @@ jobs:
           pip3 install -r requirements.txt
           pip3 install flake8
   
-      - name: 檢查並安裝繁體中文語系（已安裝就跳過）
+      - name: 安裝繁體中文語系
         run: |
-          if locale -a | grep -q "zh_TW.UTF-8"; then
-            echo "zh_TW.UTF-8 已安裝，跳過安裝"
-          else
-            echo "安裝 zh_TW.UTF-8 語系"
-            sudo apt-get update
-            sudo apt-get install -y language-pack-zh-hant
-          fi
+          echo "安裝 zh_TW.UTF-8 語系"
+          sudo apt-get update
+          sudo apt-get install -y language-pack-zh-hant
+
+      - name: 設定語系環境變數
+        run: |
+          export LANG=zh_TW.UTF-8
+          export LANGUAGE=zh_TW:zh
+          export LC_ALL=zh_TW.UTF-8
+          locale
 
       - name: Run main.py
         run: python3 main.py
