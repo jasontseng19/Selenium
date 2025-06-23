@@ -41,8 +41,7 @@ jobs:
     #     pytest
 
     - name: Run main.py
-      run: |
-        python3 Selenium/main.py
+      run: python3 main.py
 
     - name: Upload HTMLTestRunner report
       uses: actions/upload-artifact@v4
