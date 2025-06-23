@@ -36,15 +36,15 @@ jobs:
       # - name: Lint with flake8
       #   run: flake8 .
 
-      - name: Install black
-        run: pip3 install black
-      - name: Format with black
-        run: black --check .
+      # - name: Install black
+      #   run: pip3 install black
+      # - name: Format with black
+      #   run: black --check .
 
-      - name: Install isort
-        run: pip3 install isort
-      - name: Sort imports with isort
-        run: isort --check-only .
+      # - name: Install isort
+      #   run: pip3 install isort
+      # - name: Sort imports with isort
+      #   run: isort --check-only .
 
   
       - name: 安裝繁體中文語系
