@@ -32,7 +32,11 @@ class SearchPage(BasePage):
     phone_case_color = "//p[text()='顏色']/following-sibling::p"
     phone_case_color_list = "//div[./p[text()='顏色']]/../following-sibling::ul//span"
 
+    # 搜尋產品
+    search_name = '星際大戰'
+
     def test_search(self):
+        print("\n======= 測試「搜尋商品」=======")
         result_list = []
         self.wait_until_element_is_clickable(self.search_icon).click()
         input_search = self.wait_until_element_is_clickable(self.search_input)
@@ -47,12 +51,12 @@ class SearchPage(BasePage):
 
         self.clear_text(self.search_input)
         time.sleep(1)
-        input_search.send_keys("Naruto")
+        input_search.send_keys(self.search_name)
         button.click()
         time.sleep(1)
         self.wait_until_element_is_invisibility(self.no_search_msg)
         time.sleep(1)
-        if 'Naruto' not in search_msg_ele.text and '項' not in search_msg_ele.text:
+        if self.search_name not in search_msg_ele.text and '項' not in search_msg_ele.text:
             print(f"Fail: 「搜尋-銷售商品」時顯示錯誤:{search_msg_ele.text}")
             result_list.append("False")
 
@@ -67,12 +71,16 @@ class SearchPage(BasePage):
         self.wait_until_element_is_clickable(self.first_product).click()
         time.sleep(1)
         self.switch_to_tab(-1)
-        # 關閉上方廣告bar
-        self.wait_until_element_is_clickable(self.top_ad_close).click()
-        # 關閉右方廣告bar
-        self.wait_until_element_is_clickable(self.right_ad_close).click()
+        try:
+            # 關閉上方廣告bar
+            self.wait_until_element_is_clickable(self.top_ad_close).click()
+            # 關閉右方廣告bar
+            self.wait_until_element_is_clickable(self.right_ad_close).click()
+        except:
+            pass
+
         # 判斷跳轉後的商品資訊是否正確
-        print("======= 測試「驗證 - 系列/金額 資訊」=======")
+        print("\n======= 測試「驗證 - 系列/金額 資訊」=======")
         # 系列
         product_series = self.wait_until_element_is_visibility(self.series).text
         if product_series not in search_page_data:
@@ -83,7 +91,7 @@ class SearchPage(BasePage):
         # 系列/金額
         footer_text = self.wait_until_element_is_visibility(self.footer).text
         product_series_and_cost = footer_text.split("\n")
-        product_series_and_cost.pop(2)
+        product_series_and_cost = [i for i in product_series_and_cost if '購物車' not in i]
         diff = list(set(search_page_data).symmetric_difference(set(product_series_and_cost)))
         if diff:
             print(f"Fail:「系列/金額」顯示有誤:{product_series_and_cost}")
@@ -98,7 +106,7 @@ class SearchPage(BasePage):
         old_image = None
         result_list = []
 
-        print("======= 測試「裝置顏色」=======")
+        print("\n======= 測試「裝置顏色」=======")
         # 當前手機型號
         phone_type_text = self.wait_until_element_is_presence(self.phone_type).text
         print(f"---- 當前手機型號「{phone_type_text}」-----")
@@ -185,7 +193,7 @@ class SearchPage(BasePage):
         new_color_name = None
         result_list = []
 
-        print("======= 測試「手機殼顏色」=======")
+        print("\n======= 測試「手機殼顏色」=======")
         phone_case_text = self.wait_until_element_is_presence(self.phone_case).text
         print(f"---- 當前手機殼產品「{phone_case_text}」-----")
         phone_case_color_ele = self.wait_until_element_is_presence(self.phone_case_color)

@@ -9,7 +9,6 @@ class ShoppingCarPage(BasePage):
 
     # locate
     title = "//div[./h1]/following-sibling::a"
-    product_style = "//p[text()='樣式']/following-sibling::p"
     product_type = "//p[text()='產品類型']/following-sibling::p"
     phone_price = "//div[contains(@class, 'items-center') and contains(@class, 'py-3')]//div[./p]"
     add_to_shopping_car_button = "//button/span[text()='加入購物車']"
@@ -21,6 +20,7 @@ class ShoppingCarPage(BasePage):
     check_msg = "//div[@id='cart']//div[@class='expanded-message']"
     td = "//div[@id='CartProducts']//div[contains(@class, 'td')]"
     add_button = "//span[text()='+']"
+    price_td = "//div[@class='td price']"
     sum_td = "//div[@class='td sumprice not-mobile']"
     price_ele = "//p[text()='{i}']/following-sibling::p"
     car_qty = "//div[@class='td qty']//input"
@@ -31,8 +31,6 @@ class ShoppingCarPage(BasePage):
         print("\n======= 測試「加入購物車」=======")
         # 取商品資訊
         product_title = self.wait_until_element_is_visibility(self.title).text
-        # 產品樣式
-        product_style = self.wait_until_element_is_visibility(self.product_style).text
         # 產品類型
         product_type = self.wait_until_element_is_visibility(self.product_type).text
         # 價錢
@@ -76,7 +74,7 @@ class ShoppingCarPage(BasePage):
                 print(f"Fail: 「購物車頁面」顯示錯誤訊息: {ele}")
                 result_list.append("False")
         except:
-            print("======= 測試「檢查購物車資訊」=======")
+            print("\n======= 測試「檢查購物車資訊」=======")
             try:
                 product_td = self.wait_until_all_elements_is_visibility(self.td)
                 car_product = []
@@ -113,9 +111,8 @@ class ShoppingCarPage(BasePage):
             except:
                 print("Fail: 檢查「購物車頁面-商品」時失敗")
                 result_list.append("False")
-            print("*** 測試結束 ***\n")
 
-            print("======= 測試「金額」=======")
+            print("\n======= 測試「金額」=======")
             # 測試金額
             try:
                 # 商品數+1
@@ -124,15 +121,21 @@ class ShoppingCarPage(BasePage):
                 # wait loading
                 self.wait_until_element_is_invisibility(self.loading)
                 price_dict = {
+                    "金額": "",
+                    "數量": "",
                     "合計": "",
                     "商品金額": "",
                     "運費小計": "",
-                    "總共省下": "",
                     "應付金額": "",
                 }
 
                 for i in price_dict:
-                    if i == '合計':
+                    if i == '金額':
+                        ele = self.wait_until_element_is_visibility(self.price_td)
+                        price_dict['金額'] = "".join(filter(lambda x: x in '0123456789', ele.text))
+                    elif i == '數量':
+                        price_dict['數量'] = self.wait_until_element_is_visibility(self.car_qty).get_attribute("value")
+                    elif i == '合計':
                         ele = self.wait_until_element_is_visibility(self.sum_td)
                         price_dict['合計'] = "".join(filter(lambda x: x in '0123456789', ele.text))
                     else:
@@ -140,40 +143,30 @@ class ShoppingCarPage(BasePage):
                         ele = self.wait_until_element_is_visibility(_xpath)
                         price_dict[i] = "".join(filter(lambda x: x in '0123456789', ele.text))
 
-                # 數量
-                qty = self.wait_until_element_is_visibility(self.car_qty).get_attribute("value")
-                # qty = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(
-                #     (By.XPATH, "//div[@class='td qty']//input"))).get_attribute("value")
 
-                # # 金額
-                # price = "".join(filter(lambda x: x in '0123456789', phone_price_list[0]))
-
-                # # 驗證金額
-                # if int(price) * int(qty) != int(price_dict['合計']):
-                #     print("Fail:「金額 x 數量」與「合計金額」不同")
-                #     print(f"「金額」: {price}")
-                #     print(f"「數量」: {qty}")
-                #     print(f"「合計金額」: {price_dict['合計']}")
-                #     result_list.append("False")
-                if int(price_dict['合計']) != (int(price_dict['商品金額']) - int(price_dict['總共省下'])):
-                    print("Fail: 「合計金額」與「商品金額 - 總共省下」不同")
+                # 驗證金額
+                if int(price_dict['金額']) * int(price_dict['數量']) != int(price_dict['合計']):
+                    print("Fail:「金額 x 數量」與「合計金額」不同")
+                    print(f"「金額」: {price_dict['金額']}")
+                    print(f"「數量」: {price_dict['數量']}")
+                    print(f"「合計金額」: {price_dict['合計']}")
+                    result_list.append("False")
+                elif int(price_dict['合計']) != int(price_dict['商品金額']):
+                    print("Fail: 「合計金額」與「商品金額」不同")
                     print(f"「合計金額」: {price_dict['合計']}")
                     print(f"「商品金額」: {price_dict['商品金額']}")
-                    print(f"「總共省下」: {price_dict['總共省下']}")
                     result_list.append("False")
-                elif (int(price_dict['商品金額']) - int(price_dict['總共省下'])) + int(price_dict['運費小計']) != int(price_dict['應付金額']):
-                    print("Fail:「商品金額 - 總共省下 + 運費小計」與「應付金額」不同顯示異常")
+                elif int(price_dict['商品金額']) + int(price_dict['運費小計']) != int(price_dict['應付金額']):
+                    print("Fail:「商品金額 + 運費小計」與「應付金額」不同顯示異常")
                     print(f"「商品金額」: {price_dict['商品金額']}")
-                    print(f"「總共省下」: {price_dict['總共省下']}")
                     print(f"「運費小計」: {price_dict['運費小計']}")
                     print(f"「應付金額」: {price_dict['應付金額']}")
                     result_list.append("False")
             except:
                 print("Fail: 測試「金額」時失敗")
                 result_list.append("False")
-            print("*** 測試結束 ***\n")
 
-            print("======= 測試「清空購物車」=======")
+            print("\n======= 測試「清空購物車」=======")
             # 清空購物車
             try:
                 self.wait_until_element_is_clickable(self.remove).click()
@@ -187,7 +180,6 @@ class ShoppingCarPage(BasePage):
             except:
                 print("Fail: 測試「清空購物車」時失敗")
                 result_list.append("False")
-            print("*** 測試結束 ***\n")
 
         results = False if "False" in result_list else True
         return results

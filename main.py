@@ -14,6 +14,7 @@ from pages import search_page
 from pages import car_page
 
 
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(), "..")))
 options = webdriver.ChromeOptions()
 options.add_experimental_option('excludeSwitches', ['enable-automation'])
